@@ -44,11 +44,26 @@ class MPDException(Exception):
 
 def mpd_connect():
 	global sock
+	import os
+
 	sock = socket.socket()
+
 	try:
-		sock.connect(("localhost", 6600)) # TODO
+		host = os.environ["MPD_HOST"]
+	except KeyError:
+		host = "localhost"
+	try:
+		port = os.environ["MPD_PORT"]
+	except KeyError:
+		port = "6600"
+
+	try:
+		port = int(port)
+		sock.connect((host, port))
 	except Exception as e:
 		raise MPDException("Couldn't connect to mpd: %s" % e)
+	except ValueError as e:
+		raise MPDException("Couldn't parse port (%s): %s" % (port, e))
 
 	s    = sock.recv(512)
 	data = s.split()
@@ -61,8 +76,18 @@ def mpd_connect():
 		raise MPDException("Invalid version string from mpd: %s" % data[2])
 
 	try:
-		if not (int(vers[0]) == 0 and int(vers[1]) == 15 and int(vers[2]) == 0):
-			raise MPDException("Invalid MPD version: %s" % data[2])
+		if int(vers[0]) != 0 or int(vers[1]) != 16 or int(vers[2]) != 1:
+			global stdscr
+
+			stdscr.addstr("MPD (%s:%d) version: %s, continue? (Y/n) " %
+					(host, port, data[2]))
+
+			ch = -1
+			while ch == -1:
+				ch = stdscr.getch()
+
+			if ch != ord('\n') and ch != ord('y'):
+				raise MPDException("Invalid MPD version: %s (reply: %d)" % (data[2], ch))
 	except TypeError as e:
 		raise MPDException("Invalid version string from mpd: %s" % data[2])
 	# good to go
@@ -242,7 +267,7 @@ def draw():
 		if i == draw_selected:
 			attr = curses.A_BOLD | curses.color_pair(curses.COLOR_RED)
 		elif 'Pos' in mpd_current.keys() and i == mpd_current['Pos']:
-			attr = curses.color_pair(curses.COLOR_GREEN)
+			attr = curses.A_BOLD | curses.color_pair(curses.COLOR_GREEN)
 			# Black
 			# Blue
 			# Green
