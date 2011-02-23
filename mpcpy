@@ -273,7 +273,11 @@ def draw():
 		stdscr.clrtoeol()
 
 		if i == draw_selected:
-			attr = curses.A_BOLD | curses.color_pair(curses.COLOR_RED)
+			if i == mpd_current['Pos']:
+				# selected _and_ playing
+				attr = curses.A_BOLD | curses.color_pair(curses.COLOR_YELLOW)
+			else:
+				attr = curses.A_BOLD | curses.color_pair(curses.COLOR_RED)
 		elif 'Pos' in mpd_current.keys() and i == mpd_current['Pos']:
 			attr = curses.A_BOLD | curses.color_pair(curses.COLOR_GREEN)
 			# Black
