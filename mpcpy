@@ -256,7 +256,8 @@ def draw():
 
 	stdscr.move(0, 0)
 	stdscr.clrtoeol()
-	stdscr.addstr("[%s%s%s%s%s] showing %d/%d, %-30s: %s %s/%s" % (
+
+	stdscr.addstr("[%s%s%s%s%s] showing %d/%d, %s: %s %s/%s" % (
 		'r' if mpd_statusdict['repeat' ] > 0 else '-',
 		'z' if mpd_statusdict['random' ] > 0 else '-',
 		'y' if mpd_statusdict['single' ] > 0 else '-',
@@ -398,7 +399,6 @@ def keys():
 			draw_selected = 0
 
 	maxy = stdscr.getmaxyx()[0]
-	maxy = 80
 
 	ch = stdscr.getch() # main sleep statement here
 	if ch == -1:
@@ -421,7 +421,7 @@ def keys():
 		draw_selected = draw_top + SCROLL_OFF
 		clip_draw_selected()
 	elif ch == ord('L'):
-		draw_selected = draw_top + maxy - SCROLL_OFF - 3
+		draw_selected = draw_top + maxy - SCROLL_OFF - 2 # 2 for the status bars
 		clip_draw_selected()
 	elif ch == ord('M'):
 		draw_selected = draw_top + maxy / 2
