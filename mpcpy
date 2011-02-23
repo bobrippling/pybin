@@ -2,7 +2,7 @@
 
 import curses
 import socket
-import sys, errno
+import sys, errno, os
 import re
 from time import time
 
@@ -485,6 +485,27 @@ def run():
 	mpd_close()
 
 
+#	for arg in sys.argv[1:]:
+#		#vars2 = { 'SCROLL_OFF' : SCROLL_OFF, 'CURSES_TIMEOUT' : CURSES_TIMEOUT }
+#		#if re.match('[A-Z_]+=[0-9]+', arg) != None:
+#			#print "eval %s" % arg
+#			#eval(arg, {}, vars2) fucking python...
+#
+#		if arg == 'SCROLL_OFF':
+#			SCROLL_OFF=arg[
+#		else:
+#			print >>sys.stderr, "Unrecognised argument \"%s\"" % arg
+#			print >>sys.stderr, '''Usage: %s [OPTION=VALUE...]
+#	  Options include:
+#	  SCROLL_OFF:     amount of space at the top and bottom
+#	  CURSES_TIMEOUT: duh'''
+#			sys.exit(1)
+
+if len(sys.argv) > 1:
+	cmd = "mpc "
+	for arg in sys.argv[1:]:
+		cmd += "%s " % arg
+	sys.exit(os.system(cmd))
 
 try:
 	stdscr = curses.initscr()
