@@ -445,11 +445,11 @@ def keys():
 	elif ch == ord('>'):  need_mpd_refresh = True; mpd_next()
 	elif ch == ord('<'):  need_mpd_refresh = True; mpd_prev()
 
-	elif ch == ord('r'):  need_mpd_refresh = True; mpd_repeat()
-	elif ch == ord('z'):  need_mpd_refresh = True; mpd_random()
-	elif ch == ord('y'):  need_mpd_refresh = True; mpd_single()
-	elif ch == ord('c'):  need_mpd_refresh = True; mpd_consume()
-	elif ch == ord('x'):  need_mpd_refresh = True; mpd_crossfade()
+	elif ch == ord('r') or ch == ord('1'):  need_mpd_refresh = True; mpd_repeat()
+	elif ch == ord('z') or ch == ord('2'):  need_mpd_refresh = True; mpd_random()
+	elif ch == ord('y') or ch == ord('3'):  need_mpd_refresh = True; mpd_single()
+	elif ch == ord('x') or ch == ord('4'):  need_mpd_refresh = True; mpd_crossfade()
+	elif ch == ord('c') or ch == ord('5'):  need_mpd_refresh = True; mpd_consume()
 
 	elif ch == ord('/'):  dosearch()
 	elif ch == ord('o'):  view_current()
