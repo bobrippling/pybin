@@ -321,6 +321,8 @@ def view_inc(n):
 	global draw_selected, draw_top
 	global stdscr, mpd_playlist
 
+	# FIXME: panning to the bottom
+
 	if draw_selected < len(mpd_playlist)-1:
 		draw_selected += n
 		if draw_selected >= len(mpd_playlist): draw_selected = len(mpd_playlist)-1
@@ -363,6 +365,10 @@ def view_set(n):
 		draw_top = len(mpd_playlist) - maxy
 	if draw_top < 0:
 		draw_top = 0
+
+def view_current():
+	global mpd_current
+	view_set(mpd_current['Pos'])
 
 def dosearch():
 	global stdscr, mpd_playlist
@@ -442,7 +448,7 @@ def keys():
 	elif ch == ord('x'):  need_mpd_refresh = True; mpd_crossfade()
 
 	elif ch == ord('/'):  dosearch()
-	elif ch == ord('o'):  view_set(mpd_current['Pos'])
+	elif ch == ord('o'):  view_current()
 
 	else: status("unknown key %d" % ch)
 
@@ -504,6 +510,9 @@ try:
 	mpd_playlist = mpd_getplaylist()
 
 	mpd_status()
+
+	if mpd_statusdict['state'] == 'play':
+		view_current()
 
 	run()
 except MPDException as e:
