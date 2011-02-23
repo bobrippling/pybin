@@ -7,8 +7,12 @@ import re
 from time import time
 
 # const
-SCROLL_OFF = 5
+SCROLL_OFF     = 5
 CURSES_TIMEOUT = 250
+SLEEP_TIME     = 1
+
+# timing
+laststatus = 0
 
 #  ncurses
 stdscr = None
@@ -35,6 +39,12 @@ def dump_map(pre, m):
 
 # ----------------------------------------------------
 # socket/mpd code
+
+class mpcpyException(Exception):
+	def __init__(self, e):
+		self.e = e
+	def __str__(self):
+		return self.e
 
 class MPDException(Exception):
 	def __init__(self, e):
@@ -76,7 +86,7 @@ def mpd_connect():
 		raise MPDException("Invalid version string from mpd: %s" % data[2])
 
 	try:
-		if int(vers[0]) != 0 or int(vers[1]) != 16 or int(vers[2]) != 1:
+		if int(vers[0]) != 0 or int(vers[1]) != 16: # or int(vers[2]) != 0:
 			global stdscr
 
 			stdscr.addstr("MPD (%s:%d) version: %s, continue? (Y/n) " %
@@ -186,20 +196,19 @@ def mpd_time(s):
 	hr    = mins / 60
 	mins %= 60
 
-	# FIXME
-
 	if hr:
 		return "%02d:%02d:%02d" % (hr, mins, secs)
 	return "%02d:%02d" % (mins, secs)
 
 
-def mpd_play(i):      mpd_noreply("play %d\n" % i)
-def mpd_toggle():     mpd_noreply("pause\n")
+def mpd_play(i = -1): mpd_noreply("play %d\n" % i) if i != -1 else mpd_noreply("play\n")
+def mpd_pause():      mpd_noreply("pause\n")
 def mpd_stop():       mpd_noreply("stop\n")
-def mpd_previous():   mpd_noreply("previous\n")
+def mpd_prev():       mpd_noreply("previous\n")
 def mpd_next():       mpd_noreply("next\n")
 def mpd_stop():       mpd_noreply("stop\n")
 
+def mpd_toggle():     global mpd_statusdict; mpd_pause() if mpd_statusdict['state'] == 'play' else mpd_play()
 def mpd_remove():     global draw_selected;  mpd_noreply("delete %d\n"    % draw_selected)
 
 def mpd_random():     global mpd_statusdict; mpd_noreply("random %d\n"    % (1-mpd_statusdict['random']))
@@ -237,19 +246,17 @@ def draw():
 	else:
 		current_song = "<unknown>"
 
+	time_now = 0
+	time_fin = 0
 	if 'time' in mpd_statusdict.keys():
 		song_time = mpd_statusdict['time']
-		pos = song_time.find(':')
-		time_now = song_time[:pos-1]
-		if len(time_now) == 0:
-			time_now = '0'
-		time_fin = song_time[pos+1:]
-	else:
-		time_now = time_fin = '0'
+		times = song_time.split(':')
+		time_now = times[0]
+		time_fin = times[1]
 
 	stdscr.move(0, 0)
 	stdscr.clrtoeol()
-	stdscr.addstr("[%s%s%s%s%s] showing %d/%d, %s: %s %s/%s" % (
+	stdscr.addstr("[%s%s%s%s%s] showing %d/%d, %-30s: %s %s/%s" % (
 		'r' if mpd_statusdict['repeat' ] > 0 else '-',
 		'z' if mpd_statusdict['random' ] > 0 else '-',
 		'y' if mpd_statusdict['single' ] > 0 else '-',
@@ -289,7 +296,10 @@ def draw():
 		album  = album[ :20]
 
 		# TODO: scale
-		stdscr.addstr("%-8s %-20s %-35s %-20s" % (time, artist, title, album), attr)
+		try:
+			stdscr.addstr("%-8s %-20s %-30s %-20s" % (time, artist, title, album), attr)
+		except Exception:
+			pass
 
 		i += 1
 		if i == len(mpd_playlist):
@@ -395,6 +405,8 @@ def keys():
 		# timeout
 		return True
 
+	need_mpd_refresh = False
+
 	if   ch == ord('q'):      return False
 	elif ch == ord('j'):      view_inc(1)
 	elif ch == ord('k'):      view_dec(1)
@@ -415,21 +427,28 @@ def keys():
 		draw_selected = draw_top + maxy / 2
 		clip_draw_selected()
 
-	elif ch == ord('d'):  mpd_remove()
-	elif ch == ord('p'):  mpd_toggle()
-	elif ch == ord('s'):  mpd_stop()
-	elif ch == ord('\n'): mpd_play(draw_selected)
+	elif ch == ord('d'):  need_mpd_refresh = True; mpd_remove()
+	elif ch == ord('p'):  need_mpd_refresh = True; mpd_toggle()
+	elif ch == ord('s'):  need_mpd_refresh = True; mpd_stop()
+	elif ch == ord('\n'): need_mpd_refresh = True; mpd_play(draw_selected)
 
-	elif ch == ord('r'): mpd_repeat()
-	elif ch == ord('z'): mpd_random()
-	elif ch == ord('y'): mpd_single()
-	elif ch == ord('c'): mpd_consume()
-	elif ch == ord('x'): mpd_crossfade()
+	elif ch == ord('>'):  need_mpd_refresh = True; mpd_next()
+	elif ch == ord('<'):  need_mpd_refresh = True; mpd_prev()
 
-	elif ch == ord('/'): dosearch()
-	elif ch == ord('o'): view_set(mpd_current['Pos'])
+	elif ch == ord('r'):  need_mpd_refresh = True; mpd_repeat()
+	elif ch == ord('z'):  need_mpd_refresh = True; mpd_random()
+	elif ch == ord('y'):  need_mpd_refresh = True; mpd_single()
+	elif ch == ord('c'):  need_mpd_refresh = True; mpd_consume()
+	elif ch == ord('x'):  need_mpd_refresh = True; mpd_crossfade()
+
+	elif ch == ord('/'):  dosearch()
+	elif ch == ord('o'):  view_set(mpd_current['Pos'])
 
 	else: status("unknown key %d" % ch)
+
+	if need_mpd_refresh:
+		global laststatus
+		laststatus = 0
 
 	return True
 
@@ -439,8 +458,7 @@ def keys():
 
 
 def run():
-	global stdscr
-	laststatus = 0
+	global stdscr, laststatus
 
 	status("connected to mpd")
 
@@ -450,7 +468,7 @@ def run():
 		if not keys():
 			break
 
-		if laststatus + 2 < time():
+		if laststatus + SLEEP_TIME < time():
 			# two seconds
 			laststatus = time()
 			mpd_status()
@@ -492,6 +510,9 @@ except MPDException as e:
 	printme = "MPDException: %s" % e
 except KeyboardInterrupt as e:
 	printme = "interrupted!"
+except curses.error:
+	printme = "mpcpy needs more columns on the terminal"
+
 
 try:
 	curses.nocbreak()
@@ -501,4 +522,4 @@ except Exception:
 	pass
 
 if len(printme):
-	print printme
+	print >>sys.stderr, printme
