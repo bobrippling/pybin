@@ -545,8 +545,7 @@ try:
 
 	mpd_status()
 
-	if mpd_statusdict['state'] == 'play':
-		view_current()
+	view_current()
 
 	run()
 except MPDException as e:
