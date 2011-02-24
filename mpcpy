@@ -108,7 +108,7 @@ def mpd_connect():
 		raise MPDException("Invalid version string from mpd: %s" % data[2])
 
 	if len(pw):
-		mpd_cmd('password "%s"\n' % pw)
+		mpd_cmd('password "%s"' % pw)
 	# good to go
 
 
@@ -120,7 +120,7 @@ def mpd_close():
 def mpd_cmd(cmd):
 	"""Send 'cmd' to mpd, and read lines until we get an 'OK'"""
 	global sock
-	sock.send(cmd)
+	sock.send(cmd + '\n')
 
 	lines = []
 	saved = ''
@@ -159,8 +159,8 @@ def list_to_map(lst):
 
 def mpd_status():
 	global mpd_current, mpd_statusdict
-	mpd_current    = list_to_map(mpd_cmd("currentsong\n"))
-	mpd_statusdict = list_to_map(mpd_cmd("status\n"))
+	mpd_current    = list_to_map(mpd_cmd("currentsong"))
+	mpd_statusdict = list_to_map(mpd_cmd("status"))
 
 	# FIXME: check for vitals and throwdown if not found
 	for k in ['random', 'repeat', 'consume', 'xfade', 'single']:
@@ -171,7 +171,7 @@ def mpd_status():
 
 
 def mpd_getplaylist():
-	data = mpd_cmd("playlistinfo\n")
+	data = mpd_cmd("playlistinfo")
 
 	mpd_playlist = []
 	i = 0
@@ -210,31 +210,31 @@ def mpd_time(s):
 	return "%02d:%02d" % (mins, secs)
 
 
-def mpd_play(i = -1): mpd_noreply("play %d\n" % i) if i != -1 else mpd_noreply("play\n")
-def mpd_pause():      mpd_noreply("pause\n")
-def mpd_stop():       mpd_noreply("stop\n")
-def mpd_prev():       mpd_noreply("previous\n")
-def mpd_next():       mpd_noreply("next\n")
-def mpd_stop():       mpd_noreply("stop\n")
+def mpd_play(i = -1): mpd_noreply("play %d" % i) if i != -1 else mpd_noreply("play")
+def mpd_pause():      mpd_noreply("pause")
+def mpd_stop():       mpd_noreply("stop")
+def mpd_prev():       mpd_noreply("previous")
+def mpd_next():       mpd_noreply("next")
+def mpd_stop():       mpd_noreply("stop")
 
 def mpd_toggle():     global mpd_statusdict; mpd_pause() if mpd_statusdict['state'] == 'play' else mpd_play()
-def mpd_remove():     global draw_selected;  mpd_noreply("delete %d\n"    % draw_selected)
+def mpd_remove():     global draw_selected;  mpd_noreply("delete %d"    % draw_selected)
 
-def mpd_random():     global mpd_statusdict; mpd_noreply("random %d\n"    % (1-mpd_statusdict['random']))
-def mpd_repeat():     global mpd_statusdict; mpd_noreply("repeat %d\n"    % (1-mpd_statusdict['repeat']))
-def mpd_consume():    global mpd_statusdict; mpd_noreply("consume %d\n"   % (1-mpd_statusdict['consume']))
-def mpd_single():     global mpd_statusdict; mpd_noreply("single %d\n"    % (1-mpd_statusdict['single']))
+def mpd_random():     global mpd_statusdict; mpd_noreply("random %d"    % (1-mpd_statusdict['random']))
+def mpd_repeat():     global mpd_statusdict; mpd_noreply("repeat %d"    % (1-mpd_statusdict['repeat']))
+def mpd_consume():    global mpd_statusdict; mpd_noreply("consume %d"   % (1-mpd_statusdict['consume']))
+def mpd_single():     global mpd_statusdict; mpd_noreply("single %d"    % (1-mpd_statusdict['single']))
 
 def mpd_crossfade():
 	global mpd_statusdict, mpd_xfade
 	if mpd_statusdict['xfade'] == 0:
-		mpd_noreply("crossfade %d\n" % mpd_xfade)
+		mpd_noreply("crossfade %d" % mpd_xfade)
 	else:
-		mpd_noreply("crossfade 0\n")
+		mpd_noreply("crossfade 0")
 
-def mpd_setvol(v):    mpd_noreply("setvol %d\n" % v)
-def mpd_seek(pos):    mpd_noreply("seek %d\n" % pos)
-def mpd_volume(v):    mpd_noreply("volume %d\n" % v)
+def mpd_setvol(v):    mpd_noreply("setvol %d" % v)
+def mpd_seek(pos):    mpd_noreply("seek %d" % pos)
+def mpd_volume(v):    mpd_noreply("volume %d" % v)
 
 # ----------------------------------------------------
 # ncurses code
@@ -457,7 +457,7 @@ def keys():
 	elif ch == ord('r') or ch == ord('1'):  need_mpd_refresh = True; mpd_repeat()
 	elif ch == ord('z') or ch == ord('2'):  need_mpd_refresh = True; mpd_random()
 	elif ch == ord('y') or ch == ord('3'):  need_mpd_refresh = True; mpd_single()
-	elif ch == ord('x') or ch == ord('4'):  need_mpd_refresh = True; mpd_crossfade()
+	elif ch == ord('x') or ch == ord('4'):  need_mpd_refresh = True; mpd_crossfade() # FIXME: prompt
 	elif ch == ord('c') or ch == ord('5'):  need_mpd_refresh = True; mpd_consume()
 
 	elif ch == ord('/'):  dosearch()
@@ -489,6 +489,7 @@ def run():
 
 		if laststatus + SLEEP_TIME < time():
 			# two seconds
+			# FIXME: use mpd_cmd("raw")
 			laststatus = time()
 			mpd_status()
 	mpd_close()
