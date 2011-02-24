@@ -57,11 +57,17 @@ def mpd_connect():
 	import os
 
 	sock = socket.socket()
+	pw = ''
 
 	try:
 		host = os.environ["MPD_HOST"]
+		if host.find("@"):
+			parts = host.split("@")
+			pw = parts[0]
+			host = ''.join(parts[1:])
 	except KeyError:
 		host = "localhost"
+
 	try:
 		port = os.environ["MPD_PORT"]
 	except KeyError:
@@ -100,6 +106,9 @@ def mpd_connect():
 				raise MPDException("Invalid MPD version: %s (reply: %d)" % (data[2], ch))
 	except TypeError as e:
 		raise MPDException("Invalid version string from mpd: %s" % data[2])
+
+	if len(pw):
+		mpd_cmd('password "%s"\n' % pw)
 	# good to go
 
 
