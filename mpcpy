@@ -398,9 +398,24 @@ def dosearch():
 
 	regex = re.compile(".*" + s + ".*", re.IGNORECASE)
 	for trax in mpd_playlist:
-		if regex.match(trax['Title']):
-			view_set(int(trax['Pos']))
-			return
+		words = []
+		try:
+			words.append(trax['Title'])
+		except:
+			pass
+		try:
+			words.append(trax['Artist'])
+		except:
+			pass
+		try:
+			words.append(trax['Album'])
+		except:
+			pass
+
+		for w in words:
+			if regex.match(w):
+				view_set(int(trax['Pos']))
+				return
 	status("Couldn't find %s" % s)
 
 
