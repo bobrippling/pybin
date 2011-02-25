@@ -478,6 +478,8 @@ def keys():
 	elif ch == ord('/'):  dosearch()
 	elif ch == ord('o'):  view_current()
 
+	elif ch == 410: pass # window resize
+
 	else: status("unknown key %d" % ch)
 
 	if need_mpd_refresh:
