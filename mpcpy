@@ -384,12 +384,12 @@ def view_current():
 	global mpd_current
 	view_set(mpd_current['Pos'])
 
-def dosearch():
-	global stdscr, mpd_playlist
+def dosearch(reverse):
+	global stdscr, mpd_playlist, draw_selected
 
 	stdscr.move(1, 0) # status line
 	stdscr.clrtoeol()
-	stdscr.addch('/')
+	stdscr.addch('?' if reverse else '/')
 
 	curses.echo()
 	stdscr.timeout(-1)
@@ -398,7 +398,15 @@ def dosearch():
 	curses.noecho()
 
 	regex = re.compile(".*" + s + ".*", re.IGNORECASE)
-	for trax in mpd_playlist:
+
+	if reverse:
+		l = range(draw_selected - 1, 0, -1)
+		l.extend(i for i in range(len(mpd_playlist), draw_selected))
+	else:
+		l = range(draw_selected + 1, len(mpd_playlist)) # start seaching at current + 1
+		l.extend(i for i in range(0, draw_selected + 1))
+
+	for trax in [mpd_playlist[i] for i in l]:
 		words = []
 		try:
 			words.append(trax['Title'])
@@ -476,7 +484,8 @@ def keys():
 	elif ch == ord('x') or ch == ord('4'):  need_mpd_refresh = True; mpd_crossfade() # FIXME: prompt
 	elif ch == ord('c') or ch == ord('5'):  need_mpd_refresh = True; mpd_consume()
 
-	elif ch == ord('/'):  dosearch()
+	elif ch == ord('/'):  dosearch(0)
+	elif ch == ord('?'):  dosearch(1)
 	elif ch == ord('o'):  view_current()
 
 	elif ch == 410: pass # window resize
