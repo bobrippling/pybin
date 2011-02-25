@@ -4,7 +4,7 @@ import curses
 import socket
 import sys, errno, os
 import re
-from time import time
+import time
 
 # const
 SCROLL_OFF     = 5
@@ -130,6 +130,7 @@ def mpd_cmd(cmd):
 		lastnl = got.rfind('\n')
 		if lastnl == -1:
 			# FIXME: check for got.len eq 4096
+			time.sleep(0.2)
 			continue
 
 		got = filter(len, sock.recv(lastnl).split('\n'))
@@ -504,10 +505,10 @@ def run():
 		if not keys():
 			break
 
-		if laststatus + SLEEP_TIME < time():
+		if laststatus + SLEEP_TIME < time.time():
 			# two seconds
 			# FIXME: use mpd_cmd("raw")
-			laststatus = time()
+			laststatus = time.time()
 			mpd_status()
 	mpd_close()
 
