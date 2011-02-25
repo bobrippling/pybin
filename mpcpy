@@ -416,7 +416,7 @@ def dosearch(reverse):
 		return words
 
 	for trax in [mpd_playlist[i] for i in l]:
-		words = verbose_search(trax, ['Title', 'Artist', 'Album'])
+		words = search_descript(trax, ['Title', 'Artist', 'Album'])
 		# returns: [ [ '<title>', 'Title'], [ '<artist>', 'Artist' ] ]
 
 		for w in words:
