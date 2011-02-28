@@ -169,6 +169,8 @@ def mpd_status():
 
 	if 'Pos' in mpd_current.keys():
 		mpd_current['Pos'] = int(mpd_current['Pos'])
+	else:
+		mpd_current['Pos'] = 0
 
 
 def mpd_getplaylist():
@@ -288,7 +290,7 @@ def draw():
 				attr = curses.A_BOLD | curses.color_pair(curses.COLOR_YELLOW)
 			else:
 				attr = curses.A_BOLD | curses.color_pair(curses.COLOR_RED)
-		elif 'Pos' in mpd_current.keys() and i == mpd_current['Pos']:
+		elif i == mpd_current['Pos']:
 			attr = curses.A_BOLD | curses.color_pair(curses.COLOR_GREEN)
 			# Black
 			# Blue
