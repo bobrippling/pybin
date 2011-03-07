@@ -52,6 +52,17 @@ class MPDException(Exception):
 	def __str__(self):
 		return self.e
 
+def confirm():
+	global stdscr
+
+	ch = -1
+	while ch == -1: # timeout
+		ch = stdscr.getch()
+
+	if ch == ord('\n') or ch == ord('y'):
+		return True
+	return False
+
 def mpd_connect():
 	global sock
 	import os
@@ -98,18 +109,14 @@ def mpd_connect():
 			stdscr.addstr("MPD (%s:%d) version: %s, continue? (Y/n) " %
 					(host, port, data[2]))
 
-			ch = -1
-			while ch == -1:
-				ch = stdscr.getch()
-
-			if ch != ord('\n') and ch != ord('y'):
+			if not confirm():
 				raise MPDException("Invalid MPD version: %s (reply: %d)" % (data[2], ch))
 	except TypeError as e:
 		raise MPDException("Invalid version string from mpd: %s" % data[2])
 
 	if len(pw):
 		mpd_cmd('password "%s"' % pw)
-	# good to go
+	# good to go, end of function
 
 
 def mpd_close():
@@ -278,7 +285,10 @@ def draw():
 		draw_selected + 1, len(mpd_playlist),
 		state, current_song, mpd_time(time_now), mpd_time(time_fin)))
 
-	maxy = stdscr.getmaxyx()[0]
+	maxen = stdscr.getmaxyx()
+	maxy  = maxen[0]
+	maxx  = maxen[1]
+
 	i = draw_top
 	for y in range(2, maxy):
 		stdscr.move(y, 0)
@@ -312,9 +322,14 @@ def draw():
 		title  = title[ :35]
 		album  = album[ :20]
 
-		# TODO: scale
+		scale = float(maxx) / float(8+20+30+20)
 		try:
-			stdscr.addstr("%-8s %-20s %-30s %-20s" % (time, artist, title, album), attr)
+			stdscr.addstr("%-*s %-*s %-*s %-*s" % (
+				int( 8 * scale), time,
+				int(20 * scale), artist,
+				int(30 * scale), title,
+				int(20 * scale), album
+				), attr)
 		except Exception:
 			pass
 
@@ -337,8 +352,6 @@ def view_inc(n):
 	global draw_selected, draw_top
 	global stdscr, mpd_playlist
 
-	# FIXME: panning to the bottom
-
 	if draw_selected < len(mpd_playlist)-1:
 		draw_selected += n
 		if draw_selected >= len(mpd_playlist): draw_selected = len(mpd_playlist)-1
@@ -346,9 +359,9 @@ def view_inc(n):
 		maxy = stdscr.getmaxyx()[0] - 2
 
 		# increase draw_top if we can't see draw_selected, but
-		# don't inc draw_top if draw_selected is within the last 4
+		# don't inc draw_top if draw_top + maxy < len(mpd_playlist)
 		if draw_selected - draw_top > maxy - SCROLL_OFF and \
-			  draw_selected < len(mpd_playlist) - SCROLL_OFF-1:
+				draw_top + maxy < len(mpd_playlist):
 			draw_top = draw_selected - maxy + SCROLL_OFF
 
 def view_dec(n):
@@ -489,7 +502,7 @@ def keys():
 	elif ch == ord('?'):  dosearch(1)
 	elif ch == ord('o'):  view_current()
 
-	elif ch == 410: pass # window resize
+	elif ch == 410: status('')
 
 	else: status("unknown key %d" % ch)
 
@@ -522,22 +535,6 @@ def run():
 			mpd_status()
 	mpd_close()
 
-
-#	for arg in sys.argv[1:]:
-#		#vars2 = { 'SCROLL_OFF' : SCROLL_OFF, 'CURSES_TIMEOUT' : CURSES_TIMEOUT }
-#		#if re.match('[A-Z_]+=[0-9]+', arg) != None:
-#			#print "eval %s" % arg
-#			#eval(arg, {}, vars2) fucking python...
-#
-#		if arg == 'SCROLL_OFF':
-#			SCROLL_OFF=arg[
-#		else:
-#			print >>sys.stderr, "Unrecognised argument \"%s\"" % arg
-#			print >>sys.stderr, '''Usage: %s [OPTION=VALUE...]
-#	  Options include:
-#	  SCROLL_OFF:     amount of space at the top and bottom
-#	  CURSES_TIMEOUT: duh'''
-#			sys.exit(1)
 
 if len(sys.argv) > 1:
 	cmd = "mpc "
