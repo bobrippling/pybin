@@ -27,7 +27,11 @@ sock = -1
 mpd_statusdict = {}
 mpd_playlist   = []
 mpd_current    = {}
-mpd_xfade      = 5 # TODO
+mpd_xfade      = 5
+
+search_regex   = None
+search_str     = ''
+search_rev     = 1
 
 def dump_list(pre, l):
 	for i in l:
@@ -399,8 +403,8 @@ def view_current():
 	global mpd_current
 	view_set(mpd_current['Pos'])
 
-def dosearch(reverse):
-	global stdscr, mpd_playlist, draw_selected
+def getsearch(reverse):
+	global stdscr, search_regex, search_str
 
 	stdscr.move(1, 0) # status line
 	stdscr.clrtoeol()
@@ -408,18 +412,23 @@ def dosearch(reverse):
 
 	curses.echo()
 	stdscr.timeout(-1)
-	s = stdscr.getstr()
+	search_str = stdscr.getstr() # FIXME: allow backspace/escape to cancel
 	stdscr.timeout(CURSES_TIMEOUT)
 	curses.noecho()
 
-	regex = re.compile(".*" + s + ".*", re.IGNORECASE)
+	search_regex = re.compile(".*" + search_str + ".*", re.IGNORECASE)
+
+
+def dosearch(reverse):
+	global stdscr, mpd_playlist, draw_selected, search_regex, search_str
 
 	if reverse:
 		l = range(draw_selected - 1, 0, -1)
-		l.extend(i for i in range(len(mpd_playlist), draw_selected))
+		l.extend(i for i in range(len(mpd_playlist) - 1, draw_selected - 1, -1))
 	else:
-		l = range(draw_selected + 1, len(mpd_playlist)) # start seaching at current + 1
-		l.extend(i for i in range(0, draw_selected + 1))
+		l = range(draw_selected + 1, len(mpd_playlist))  # start seaching at current + 1
+		l.extend(i for i in range(0, draw_selected + 1)) # include draw_selected in range
+
 
 	def search_descript(item, items):
 		words = []
@@ -430,20 +439,23 @@ def dosearch(reverse):
 				pass
 		return words
 
+	if search_regex is None:
+		getsearch(reverse)
+
 	for trax in [mpd_playlist[i] for i in l]:
 		words = search_descript(trax, ['Title', 'Artist', 'Album'])
 		# returns: [ [ '<title>', 'Title'], [ '<artist>', 'Artist' ] ]
 
 		for w in words:
-			if regex.match(w[0]):
+			if search_regex.match(w[0]):
 				view_set(int(trax['Pos']))
 				status("Found in %s" % w[1])
 				return
-	status("Couldn't find %s" % s)
+	status("Couldn't find %s" % search_str)
 
 
 def keys():
-	global draw_selected, draw_top, mpd_playlist, stdscr
+	global draw_selected, draw_top, mpd_playlist, stdscr, search_rev
 
 	def ctrl_and(n):
 		return ord(n) - ord('a') + 1
@@ -498,8 +510,15 @@ def keys():
 	elif ch == ord('x') or ch == ord('4'):  need_mpd_refresh = True; mpd_crossfade() # FIXME: prompt
 	elif ch == ord('c') or ch == ord('5'):  need_mpd_refresh = True; mpd_consume()
 
-	elif ch == ord('/'):  dosearch(0)
-	elif ch == ord('?'):  dosearch(1)
+	elif ch == ord('/') or ch == ord('?') or ch == ord('n') or ch == ord('N'):
+		if ch == ord('/') or ch == ord('?'):
+			search_rev = 0 if ch == ord('/') else 1
+			getsearch(search_rev)
+		order_adj = search_rev
+		if ch == ord('N'):
+			order_adj = 1 if order_adj == 0 else 0
+		dosearch(order_adj)
+
 	elif ch == ord('o'):  view_current()
 
 	elif ch == 410: status('')
