@@ -29,6 +29,9 @@ mpd_playlist   = []
 mpd_current    = {}
 mpd_xfade      = 5
 
+mpd_host       = ''
+mpd_port       = 0
+
 search_regex   = None
 search_str     = ''
 search_rev     = 1
@@ -68,7 +71,7 @@ def confirm():
 	return False
 
 def mpd_connect():
-	global sock
+	global sock, mpd_host, mpd_port
 	import os
 
 	sock = socket.socket()
@@ -90,6 +93,7 @@ def mpd_connect():
 
 	try:
 		port = int(port)
+		mpd_host, mpd_port = host, port
 		sock.connect((host, port))
 	except Exception as e:
 		raise MPDException("Couldn't connect to mpd: %s" % e)
@@ -537,9 +541,9 @@ def keys():
 
 
 def run():
-	global stdscr, laststatus
+	global stdscr, laststatus, mpd_host, mpd_port
 
-	status("connected to mpd")
+	status("connected to mpd @ %s:%d" % (mpd_host, mpd_port))
 
 	while True:
 		draw()
