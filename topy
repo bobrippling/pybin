@@ -1,0 +1,242 @@
+#!/usr/bin/python2
+
+import os, sys
+import curses
+
+mem_total = int(filter(len, open('/proc/meminfo').readlines()[0].split(' '))[1])
+
+
+def head(fnam):
+	f = open(fnam)
+	ret = f.readline()
+	f.close()
+	return ret
+
+def owner(path):
+	return os.stat(path).st_uid
+
+def cpuusage(root):
+	return 0
+
+
+class Proc:
+	def __init__(self, pid):
+		self.initfields(pid)
+		self.refresh()
+
+	def __str__(self):
+		return ("{ pid: %d, ppid: %d, cmdline: \"%s\", uid: %d, cpu: %d, mem: %d, state: %s, " + \
+						"time: %d, tty: %d, pgrp: %d }") % (
+						self.pid, self.ppid,  self.cmdline, self.uid, self.cpu,
+						self.mem, self.state, self.time,    self.tty, self.pgrp)
+
+	def initfields(self, pid):
+		self.pid         = int(pid)
+		self.is_alive    = True
+		self.uid         = 0
+		self.cmdline     = ''
+		self.ppid        = 0
+		self.state       = 0
+		self.time        = 0
+		self.tty         = 0
+		self.pgrp        = 0
+		self.cpu         = 0
+		self.mem         = 0
+		self.mem_percent = 0
+		self.cpu_percent = 0
+
+	def refresh(self):
+		root = "/proc/%d" % self.pid
+
+		if not self.is_alive:
+			return
+
+		try:
+			stat         = head("%s/stat" % root)
+
+			self.uid     = owner(root)
+			self.cmdline = head("%s/cmdline" % root).replace("\0", " ")
+			if len(self.cmdline) == 0:
+				self.cmdline = stat[stat.find('(')+2:stat.find(')')]
+
+			stat         = stat[stat.find(')')+3:]
+			stats        = stat.split(' ')
+
+			self.ppid    = int(stats[1])
+			self.state   = str(stats[0])
+			self.time    = int(stats[11])
+			self.tty     = int(stats[4])
+			self.pgrp    = int(stats[5])
+
+			self.cpu     = cpuusage(root)
+			self.mem     = int(head("%s/statm" % root).split(' ')[0])
+
+
+			global mem_total
+			self.mem_percent = 100.0 * float(self.mem) / float(mem_total)
+			self.cpu_percent = 0 # FIXME
+
+		except:
+			self.is_alive = False
+
+	def alive(self):
+		if not self.is_alive:
+			return False
+
+		try:
+			os.stat("/proc/%d" % self.pid)
+		except Exception as e:
+			self.is_alive = False
+		return self.is_alive
+
+
+def proc_all():
+	ents = os.listdir('/proc')
+	procs = []
+
+	for e in ents:
+		if e.isdigit():
+			procs.append(Proc(e))
+
+	return procs
+
+
+def proc_new(current):
+	ents = os.listdir('/proc')
+	new = []
+
+	for e in ents:
+		if e.isdigit():
+			pid = int(e)
+			found = False
+			for c in current:
+				if c.pid == pid:
+					found = True
+					break
+			if not found:
+				new.append(Proc(pid))
+
+	return new
+
+
+def proc_update(procs):
+	for p in procs:
+		p.refresh()
+
+	procs.extend(proc_new(procs))
+
+	for p in procs[:]:
+		if not p.alive():
+			procs.remove(p)
+
+	return procs
+
+
+def header(procs):
+	global stdscr
+
+	for y in range(0, stdscr.getmaxyx()[0]):
+		stdscr.move(y, 0)
+		stdscr.clrtoeol()
+
+	uid = os.getuid()
+	mine = 0
+
+	for p in procs:
+		if p.uid == uid:
+			mine += 1
+
+	stdscr.move(0, 0)
+	try:
+		stdscr.addstr("%d processes, %d by %d\n" % (len(procs), mine, uid))
+		stdscr.addstr("  PID  PPID  PGRP    TTY   UID NI S   Time    Mem    Cpu   User Cmd\n");
+	except:
+		pass
+
+
+def body(procs):
+	global stdscr, pos_y
+	y = 2
+
+	size = stdscr.getmaxyx()
+	maxy = size[0]
+	maxx = size[1]
+
+	for i in range(pos_y, len(procs)):
+		if y > maxy:
+			break
+
+		p = procs[i]
+		try:
+			s = (
+					"% 6d % 6d % 6d % 6d % 6d % 2d %s" + \
+					"% 6s % 3d%% % 3d%% % 6d %s\n"
+					) % (
+					p.pid, p.ppid, p.pgrp, p.tty, p.uid, 0, p.state,
+					("%-3s" % p.time), p.mem_percent, p.cpu_percent, p.uid, p.cmdline
+					)
+
+			stdscr.move(y, 0)
+			stdscr.addstr("%-*s" % (maxx, s))
+		except Exception as e:
+			print >>sys.stderr, "err: %s" % e
+			pass
+		y += 1
+
+
+
+SLEEP_TIME = 1
+
+try:
+	stdscr = curses.initscr()
+
+	curses.start_color()
+	curses.use_default_colors()
+	curses.init_pair(curses.COLOR_BLACK,   -1,                   -1)
+	curses.init_pair(curses.COLOR_GREEN,   curses.COLOR_GREEN,   -1)
+	curses.init_pair(curses.COLOR_WHITE,   curses.COLOR_WHITE,   -1)
+	curses.init_pair(curses.COLOR_RED,     curses.COLOR_RED,     -1)
+	curses.init_pair(curses.COLOR_CYAN,    curses.COLOR_CYAN,    -1)
+	curses.init_pair(curses.COLOR_MAGENTA, curses.COLOR_MAGENTA, -1)
+	curses.init_pair(curses.COLOR_BLUE,    curses.COLOR_BLUE,    -1)
+	curses.init_pair(curses.COLOR_YELLOW,  curses.COLOR_YELLOW,  -1)
+
+	curses.cbreak()
+	curses.noecho()
+	stdscr.keypad(1)
+	stdscr.timeout(SLEEP_TIME)
+except Exception as e:
+	print "Couldn't start ncurses: %s" % e
+	sys.exit(1)
+
+
+procs = proc_all()
+pos_y = 0
+
+while True:
+	header(procs)
+	body(procs)
+	stdscr.move(0, 0)
+
+	c = stdscr.getch()
+	if c == -1:
+		continue
+
+	elif c == ord('j'):
+		pos_y += 1
+		if pos_y > len(procs)-1:
+			pos_y = len(procs)-1
+	elif c == ord('k'):
+		pos_y -= 1
+		if pos_y < 0:
+			pos_y = 0
+
+	elif c == ord('q'):
+		break
+
+	procs = proc_update(procs)
+
+
+curses.nocbreak()
+curses.echo()
+curses.endwin()
