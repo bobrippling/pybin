@@ -1,10 +1,13 @@
 #!/usr/bin/python2
 
-import os, sys
+import os, sys, time
 import curses
 
+pos_y = 0
+tree  = 1
 mem_total = int(filter(len, open('/proc/meminfo').readlines()[0].split(' '))[1])
-
+INDENT_STR      = '  '
+SYSCONF_CLK_TCK = os.sysconf('SC_CLK_TCK')
 
 def head(fnam):
 	f = open(fnam)
@@ -64,7 +67,7 @@ class Proc:
 
 			self.ppid    = int(stats[1])
 			self.state   = str(stats[0])
-			self.time    = int(stats[11])
+			self.time    = self.time(stats[11]) # usermode time
 			self.tty     = int(stats[4])
 			self.pgrp    = int(stats[5])
 
@@ -76,8 +79,20 @@ class Proc:
 			self.mem_percent = 100.0 * float(self.mem) / float(mem_total)
 			self.cpu_percent = 0 # FIXME
 
-		except:
+		except Exception as e:
+			print >>sys.stderr, '%s construct-dying: %s' % (self.cmdline.split(' ')[0], e)
 			self.is_alive = False
+
+	def time(self, i):
+		global SYSCONF_CLK_TCK
+		jiffytime = 1.0 / float(SYSCONF_CLK_TCK)
+		time = int(float(i) * jiffytime)
+
+		hours =  time / 3600
+		mins  = (time / 60) % 60
+		secs  = time % 60
+
+		return "%02d:%02d.%02d" % (hours, mins, secs)
 
 	def alive(self):
 		if not self.is_alive:
@@ -86,19 +101,11 @@ class Proc:
 		try:
 			os.stat("/proc/%d" % self.pid)
 		except Exception as e:
-			self.is_alive = False
+			kelf.is_alive = False
 		return self.is_alive
 
-
-def proc_all():
-	ents = os.listdir('/proc')
-	procs = []
-
-	for e in ents:
-		if e.isdigit():
-			procs.append(Proc(e))
-
-	return procs
+	def kernelthread(self):
+		return self.ppid == 2 or self.pid == 2 # owned by kthreadd
 
 
 def proc_new(current):
@@ -107,14 +114,17 @@ def proc_new(current):
 
 	for e in ents:
 		if e.isdigit():
-			pid = int(e)
+			new_one = Proc(e)
+			if new_one.kernelthread():
+				continue
+
 			found = False
 			for c in current:
-				if c.pid == pid:
+				if c.pid == new_one.pid:
 					found = True
 					break
 			if not found:
-				new.append(Proc(pid))
+				new.append(new_one)
 
 	return new
 
@@ -129,8 +139,31 @@ def proc_update(procs):
 		if not p.alive():
 			procs.remove(p)
 
-	return procs
 
+def proc_first(procs):
+	for p in procs:
+		if p.pid == 1:
+			return p
+	return None
+
+def proc_next(procs, used):
+	for p in procs:
+		if p.ppid == used.pid:
+			return p
+
+	if len(procs):
+		return procs[0]
+	return None
+
+def proc_childlvl(procs, child):
+	if child.ppid <= 1:
+		return 0
+
+	for p in procs:
+		if p.pid == child.ppid:
+			return 1 + proc_childlvl(procs, p)
+
+	return 0
 
 def header(procs):
 	global stdscr
@@ -149,43 +182,55 @@ def header(procs):
 	stdscr.move(0, 0)
 	try:
 		stdscr.addstr("%d processes, %d by %d\n" % (len(procs), mine, uid))
-		stdscr.addstr("  PID  PPID  PGRP    TTY   UID NI S   Time    Mem    Cpu   User Cmd\n");
+		stdscr.addstr("   PID   PPID   PGRP    TTY    UID NI S   Time  Mem    Cpu   User Cmd\n");
 	except:
 		pass
 
 
 def body(procs):
-	global stdscr, pos_y
+	global stdscr, INDENT_STR, pos_y
 	y = 2
 
 	size = stdscr.getmaxyx()
 	maxy = size[0]
 	maxx = size[1]
 
-	for i in range(pos_y, len(procs)):
+	queue  = procs[:]
+	sorted = []
+
+	p = proc_first(queue)
+	while len(queue):
+		queue.remove(p)
+		sorted.append([p, proc_childlvl(procs, p)])
+		p = proc_next(queue, p)
+
+	for i in range(pos_y, len(sorted)):
 		if y > maxy:
 			break
 
-		p = procs[i]
-		try:
-			s = (
-					"% 6d % 6d % 6d % 6d % 6d % 2d %s" + \
-					"% 6s % 3d%% % 3d%% % 6d %s\n"
-					) % (
-					p.pid, p.ppid, p.pgrp, p.tty, p.uid, 0, p.state,
-					("%-3s" % p.time), p.mem_percent, p.cpu_percent, p.uid, p.cmdline
-					)
+		p      = sorted[i][0]
+		indent = sorted[i][1]
 
+		s = (
+				"% 6d % 6d % 6d % 6d % 6d % 2d %s" + \
+				"% 8s % 3d%% % 3d%% % 6d %s%s\n"
+				) % (
+				p.pid, p.ppid, p.pgrp, p.tty, p.uid, 0, p.state,
+				p.time, p.mem_percent, p.cpu_percent, p.uid,
+				INDENT_STR * indent, p.cmdline
+				)
+
+		try:
 			stdscr.move(y, 0)
-			stdscr.addstr("%-*s" % (maxx, s))
-		except Exception as e:
-			print >>sys.stderr, "err: %s" % e
+			stdscr.addstr(s[:maxx])
+		except:
 			pass
+
 		y += 1
 
 
 
-SLEEP_TIME = 1
+SLEEP_TIME = 3
 
 try:
 	stdscr = curses.initscr()
@@ -210,33 +255,46 @@ except Exception as e:
 	sys.exit(1)
 
 
-procs = proc_all()
-pos_y = 0
+def main():
+	procs = proc_new([])
 
-while True:
-	header(procs)
-	body(procs)
-	stdscr.move(0, 0)
+	update_last = 0
+	while True:
+		global pos_y, stdscr
 
-	c = stdscr.getch()
-	if c == -1:
-		continue
+		now = time.time()
+		if update_last + 1 < now:
+			update_last = now
+			header(procs)
+			body(procs)
+			stdscr.move(0, 0)
+			proc_update(procs)
+			#print >>sys.stderr, "procs (%d):"%len(procs), procs
 
-	elif c == ord('j'):
-		pos_y += 1
-		if pos_y > len(procs)-1:
-			pos_y = len(procs)-1
-	elif c == ord('k'):
-		pos_y -= 1
-		if pos_y < 0:
-			pos_y = 0
+		c = stdscr.getch()
+		if c == -1:
+			continue
+		elif c == ord('j'):
+			pos_y += 1
+			if pos_y >= len(procs):
+				pos_y = len(procs) - 1
+		elif c == ord('k'):
+			pos_y -= 1
+			if pos_y < 0:
+				pos_y = 0
+		elif c == ord('q'):
+			break
 
-	elif c == ord('q'):
-		break
-
-	procs = proc_update(procs)
-
+err = ''
+try:
+	main()
+except (Exception, KeyboardInterrupt) as e:
+	err = str(e)
 
 curses.nocbreak()
 curses.echo()
 curses.endwin()
+
+if len(err):
+	print >>sys.stderr, err
+	sys.exit(1)
