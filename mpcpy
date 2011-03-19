@@ -5,6 +5,7 @@ import socket
 import sys, errno, os
 import re
 import time
+import string
 
 # const
 SCROLL_OFF     = 5
@@ -407,6 +408,47 @@ def view_current():
 	global mpd_current
 	view_set(mpd_current['Pos'])
 
+def getstr():
+	global stdscr
+
+	stdscr.timeout(-1)
+
+	y, x = stdscr.getyx()
+
+	ret = ''
+	while True:
+		c = stdscr.getch()
+		if c == ord('\n'):
+			break
+		elif c == 033:
+			ret = ''
+			break
+		elif c == 127 or c == ord('\b'):
+			if len(ret):
+				ret = ret[:len(ret)-1]
+			else:
+				ret = ''
+				break
+
+		elif chr(c) in string.printable:
+			ret += chr(c)
+
+		elif c == 259:
+			# up
+			# TODO: history
+			pass
+		elif c == 258:
+			# down
+			# TODO: history
+			pass
+
+		stdscr.move(y, x)
+		stdscr.addstr(ret)
+
+	stdscr.timeout(CURSES_TIMEOUT)
+	return ret if len(ret) else None
+
+
 def getsearch(reverse):
 	global stdscr, search_regex, search_str
 
@@ -414,13 +456,12 @@ def getsearch(reverse):
 	stdscr.clrtoeol()
 	stdscr.addch('?' if reverse else '/')
 
-	curses.echo()
-	stdscr.timeout(-1)
-	search_str = stdscr.getstr() # FIXME: allow backspace/escape to cancel
-	stdscr.timeout(CURSES_TIMEOUT)
-	curses.noecho()
+	search_str = getstr()
+	if search_str is None:
+		return False
 
 	search_regex = re.compile(".*" + search_str + ".*", re.IGNORECASE)
+	return True
 
 
 def dosearch(reverse):
@@ -444,7 +485,8 @@ def dosearch(reverse):
 		return words
 
 	if search_regex is None:
-		getsearch(reverse)
+		if getsearch(reverse) == False:
+			return
 
 	for trax in [mpd_playlist[i] for i in l]:
 		words = search_descript(trax, ['Title', 'Artist', 'Album'])
@@ -515,13 +557,17 @@ def keys():
 	elif ch == ord('c') or ch == ord('5'):  need_mpd_refresh = True; mpd_consume()
 
 	elif ch == ord('/') or ch == ord('?') or ch == ord('n') or ch == ord('N'):
+		go = True
+
 		if ch == ord('/') or ch == ord('?'):
 			search_rev = 0 if ch == ord('/') else 1
-			getsearch(search_rev)
-		order_adj = search_rev
-		if ch == ord('N'):
-			order_adj = 1 if order_adj == 0 else 0
-		dosearch(order_adj)
+			go = getsearch(search_rev)
+
+		if go:
+			order_adj = search_rev
+			if ch == ord('N'):
+				order_adj = 1 if order_adj == 0 else 0
+			dosearch(order_adj)
 
 	elif ch == ord('o'):  view_current()
 
