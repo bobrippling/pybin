@@ -8,6 +8,7 @@ tree  = 1
 mem_total = int(filter(len, open('/proc/meminfo').readlines()[0].split(' '))[1])
 INDENT_STR      = '  '
 SYSCONF_CLK_TCK = os.sysconf('SC_CLK_TCK')
+DEBUG = False
 
 def head(fnam):
 	f = open(fnam)
@@ -80,7 +81,9 @@ class Proc:
 			self.cpu_percent = 0 # FIXME
 
 		except Exception as e:
-			print >>sys.stderr, '%s construct-dying: %s' % (self.cmdline.split(' ')[0], e)
+			global DEBUG
+			if DEBUG:
+				print >>sys.stderr, '%s construct-dying: %s' % (self.cmdline.split(' ')[0], e)
 			self.is_alive = False
 
 	def time(self, i):
@@ -269,7 +272,9 @@ def main():
 			body(procs)
 			stdscr.move(0, 0)
 			proc_update(procs)
-			#print >>sys.stderr, "procs (%d):"%len(procs), procs
+			global DEBUG
+			if DEBUG:
+				print >>sys.stderr, "procs (%d):"%len(procs), procs
 
 		c = stdscr.getch()
 		if c == -1:
