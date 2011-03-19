@@ -77,19 +77,14 @@ def mpd_connect():
 	sock = socket.socket()
 	pw = ''
 
-	try:
-		host = os.environ["MPD_HOST"]
-		if host.find("@"):
-			parts = host.split("@")
-			pw = parts[0]
-			host = ''.join(parts[1:])
-	except KeyError:
-		host = "localhost"
+	host = os.getenv('MPD_HOST', 'localhost')
+	port = os.getenv('MPD_PORT', '6600')
 
-	try:
-		port = os.environ["MPD_PORT"]
-	except KeyError:
-		port = "6600"
+	if host.find("@"):
+		parts = host.split("@")
+		pw = parts[0]
+		host = ''.join(parts[1:])
+
 
 	try:
 		port = int(port)
@@ -299,6 +294,9 @@ def draw():
 
 	i = draw_top
 	for y in range(2, maxy):
+		if i >= len(mpd_playlist):
+			break
+
 		stdscr.move(y, 0)
 		stdscr.clrtoeol()
 
@@ -320,11 +318,12 @@ def draw():
 			attr = curses.A_NORMAL
 
 
-		time   = mpd_playlist[i]['Time'  ] if  'Time'   in mpd_playlist[i].keys() else ''
+		time   = mpd_playlist[i]['Time'  ] if  'Time'   in mpd_playlist[i].keys() else '0'
 		artist = mpd_playlist[i]['Artist'] if  'Artist' in mpd_playlist[i].keys() else ''
 		title  = mpd_playlist[i]['Title' ] if  'Title'  in mpd_playlist[i].keys() else ''
 		album  = mpd_playlist[i]['Album' ] if  'Album'  in mpd_playlist[i].keys() else ''
 
+		# FIXME: don't clip fields until their width is calculated
 		time   = mpd_time(time)[:8]
 		artist = artist[:20]
 		title  = title[ :35]
@@ -544,6 +543,9 @@ def run():
 	global stdscr, laststatus, mpd_host, mpd_port
 
 	status("connected to mpd @ %s:%d" % (mpd_host, mpd_port))
+
+	# TODO: check for playlist changes
+	# TODO: ability to alter playlist
 
 	while True:
 		draw()
