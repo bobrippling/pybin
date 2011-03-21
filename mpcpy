@@ -417,20 +417,25 @@ def getstr():
 	ret = ''
 	while True:
 		c = stdscr.getch()
+
+		try:
+			chrd = chr(c)
+		except:
+			chrd = ''
+
 		if c == ord('\n'):
 			break
+
 		elif c == 033:
 			ret = ''
 			break
-		elif c == 127 or c == ord('\b'):
+
+		elif c == 127 or c == 263 or c == ord('\b'):
 			if len(ret):
 				ret = ret[:len(ret)-1]
 			else:
 				ret = ''
-				break
-
-		elif chr(c) in string.printable:
-			ret += chr(c)
+				break # escape
 
 		elif c == 259:
 			# up
@@ -441,8 +446,12 @@ def getstr():
 			# TODO: history
 			pass
 
+		elif chrd in string.printable:
+			ret += chrd
+
 		stdscr.move(y, x)
 		stdscr.addstr(ret)
+		stdscr.refresh()
 
 	stdscr.timeout(CURSES_TIMEOUT)
 	return ret if len(ret) else None
