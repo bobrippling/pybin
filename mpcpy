@@ -63,9 +63,7 @@ class MPDException(Exception):
 def confirm():
 	global stdscr
 
-	ch = -1
-	while ch == -1: # timeout
-		ch = stdscr.getch()
+	ch = getchar(0)
 
 	if ch == ord('\n') or ch == ord('y'):
 		return True
@@ -154,7 +152,7 @@ def mpd_cmd(cmd):
 				ret = lines[:len(lines)-2] # all but "OK"
 				return ret
 			elif last[:3] == 'ACK':
-				raise MPDException("MPD error: %s" % last)
+				raise MPDException("MPD error: %s (from \"%s\")" % (last, cmd))
 
 def list_to_map(lst):
 	curmap = {}
@@ -231,6 +229,10 @@ def mpd_prev():       mpd_noreply("previous")
 def mpd_next():       mpd_noreply("next")
 def mpd_stop():       mpd_noreply("stop")
 
+def mpd_seek(pos):
+	global mpd_current
+	mpd_noreply("seekid %d %d" % (mpd_current['Pos'], pos))
+
 def mpd_toggle():     global mpd_statusdict; mpd_pause() if mpd_statusdict['state'] == 'play' else mpd_play()
 def mpd_remove():     global draw_selected;  mpd_noreply("delete %d"    % draw_selected)
 
@@ -247,7 +249,6 @@ def mpd_crossfade():
 		mpd_noreply("crossfade 0")
 
 def mpd_setvol(v):    mpd_noreply("setvol %d" % v)
-def mpd_seek(pos):    mpd_noreply("seek %d" % pos)
 def mpd_volume(v):    mpd_noreply("volume %d" % v)
 
 # ----------------------------------------------------
@@ -456,13 +457,10 @@ def getstr():
 	stdscr.timeout(CURSES_TIMEOUT)
 	return ret if len(ret) else None
 
-
 def getsearch(reverse):
 	global stdscr, search_regex, search_str
 
-	stdscr.move(1, 0) # status line
-	stdscr.clrtoeol()
-	stdscr.addch('?' if reverse else '/')
+	status('?' if reverse else '/')
 
 	search_str = getstr()
 	if search_str is None:
@@ -508,6 +506,42 @@ def dosearch(reverse):
 	status("Couldn't find %s" % search_str)
 
 
+def seek():
+	status('seek to: ')
+	spos = getstr()
+	try:
+		if spos.find(':'):
+			segments = spos.split(':')
+			if len(segments) > 3:
+				status("that's not a time... come on")
+				return
+			while len(segments) < 3:
+				segments.insert(0, 0)
+			pos = int(segments[2]) + int(segments[1]) * 60 + int(segments[0]) * 24 * 60
+		else:
+			pos = int(spos)
+	except:
+		status('invalid position... numerical/time format, you derp')
+		return
+
+	mpd_seek(pos) # outside the try:, so mpd errors are thrown back
+
+def getchar(timeout = 1):
+
+	if timeout:
+		stdscr.timeout(CURSES_TIMEOUT) # after 100ms, -1 is returned
+	else:
+		stdscr.timeout(-1)
+
+	ch = stdscr.getch() # main sleep statement here
+
+	ret = None if ch == -1 else ch
+
+	if not timeout:
+		stdscr.timeout(CURSES_TIMEOUT)
+
+	return ret
+
 def keys():
 	global draw_selected, draw_top, mpd_playlist, stdscr, search_rev
 
@@ -523,21 +557,30 @@ def keys():
 
 	maxy = stdscr.getmaxyx()[0]
 
-	ch = stdscr.getch() # main sleep statement here
-	if ch == -1:
-		# timeout
+	ch = getchar()
+	if ch is None:
 		return True
 
 	need_mpd_refresh = False
 
-	if   ch == ord('q'):      return False
+	if False: pass # lolol
+	elif ch == ord('q'):      return False
 	elif ch == ord('j'):      view_inc(1)
 	elif ch == ord('k'):      view_dec(1)
 	elif ch == ctrl_and('d'): view_set(draw_selected + maxy / 2)
 	elif ch == ctrl_and('u'): view_set(draw_selected - maxy / 2)
 	elif ch == ctrl_and('f'): view_set(draw_selected + maxy)
 	elif ch == ctrl_and('b'): view_set(draw_selected - maxy)
-	elif ch == ord('g'):      view_set(0)
+	elif ch == ord('g'):
+		ch = getchar(0)
+
+		if ch == ord('g'):
+			view_set(0)
+		elif ch == ord('s'):
+			seek()
+		else:
+			status("unknown g-key %d - 'g' for top, 's' for seek" % ch)
+
 	elif ch == ord('G'):      view_set(len(mpd_playlist) - 1)
 
 	elif ch == ord('H'):
@@ -639,7 +682,6 @@ try:
 	curses.cbreak()
 	curses.noecho()
 	stdscr.keypad(1)
-	stdscr.timeout(CURSES_TIMEOUT) # after 100ms, -1 is returned
 except Exception as e:
 	print "Couldn't start ncurses: %s" % e
 	sys.exit(1)
