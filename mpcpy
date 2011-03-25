@@ -231,7 +231,7 @@ def mpd_stop():       mpd_noreply("stop")
 
 def mpd_seek(pos):
 	global mpd_current
-	mpd_noreply("seekid %d %d" % (mpd_current['Pos'], pos))
+	mpd_noreply("seek %d %d" % (mpd_current['Pos'], pos))
 
 def mpd_toggle():     global mpd_statusdict; mpd_pause() if mpd_statusdict['state'] == 'play' else mpd_play()
 def mpd_remove():     global draw_selected;  mpd_noreply("delete %d"    % draw_selected)
