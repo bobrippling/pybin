@@ -542,8 +542,51 @@ def getchar(timeout = 1):
 
 	return ret
 
+def info(current):
+	global stdscr
+	yx = stdscr.getmaxyx()
+	h = yx[0]
+	w = yx[1]
+
+	x = 1
+	y = h / 2 - h / 4
+
+	def window(start_x, start_y, w, h, attr = 0):
+		end_x, end_y = start_x + w - 1, start_y + h - 1
+
+		for x in range(start_x, start_x + w):
+			for y in range(start_y, start_y + h):
+				c = ' '
+				if x in (start_x, end_x):
+					if y in (start_y, end_y):
+						c = '+'
+					else:
+						c = '|'
+				elif y in (start_y, end_y):
+					c = '-'
+				stdscr.addch(y, x, c, attr)
+
+	window(x - 1, y - 1, w - 1, h/2,
+			curses.A_BOLD | curses.color_pair(curses.COLOR_MAGENTA))
+
+	attr = [ 'file', 'Title', 'Artist', 'Album', 'Time', 'Track', 'Genre' ]
+
+	i = 0
+	for a in range(0, len(attr)):
+		try:
+			s = attr[a] + ': ' + current[attr[a]]
+			stdscr.addstr(y + i, x, s[:w - 4])
+			i += 1
+		except:
+			pass
+
+	stdscr.addstr(y + len(attr) + 1, x, 'Any key to continue...')
+	getchar(0)
+
+
 def keys():
-	global draw_selected, draw_top, mpd_playlist, stdscr, search_rev
+	global draw_selected, draw_top, stdscr, search_rev
+	global mpd_current, mpd_playlist
 
 	def ctrl_and(n):
 		return ord(n) - ord('a') + 1
@@ -580,6 +623,9 @@ def keys():
 			seek()
 		else:
 			status("unknown g-key %d - 'g' for top, 's' for seek" % ch)
+
+	elif ch == ord('i'):
+		info(mpd_current)
 
 	elif ch == ord('G'):      view_set(len(mpd_playlist) - 1)
 
