@@ -585,6 +585,27 @@ def info(current):
 	stdscr.addstr(y + len(attr) + 1, x, 'Any key to continue...')
 	getchar(0)
 
+def view_scroll(inc):
+	global draw_top, draw_selected, mpd_playlist
+	global stdscr
+
+	if inc > 0:
+		max = len(mpd_playlist)-1
+
+		if draw_top + SCROLL_OFF < max:
+			draw_top += 1
+			y = draw_top + SCROLL_OFF;
+			if y >= draw_selected:
+				draw_selected = y
+				if draw_selected > max:
+					draw_selected = max
+	else:
+		if draw_top > 0:
+			draw_top -= 1
+			y = draw_top + stdscr.getmaxyx()[0] - 2 - SCROLL_OFF
+			if y < draw_selected:
+				draw_selected = y
+
 
 def keys():
 	global draw_selected, draw_top, stdscr, search_rev
@@ -616,6 +637,9 @@ def keys():
 	elif ch == ctrl_and('u'): view_set(draw_selected - maxy / 2)
 	elif ch == ctrl_and('f'): view_set(draw_selected + maxy)
 	elif ch == ctrl_and('b'): view_set(draw_selected - maxy)
+	elif ch == ctrl_and('e'): view_scroll(+1)
+	elif ch == ctrl_and('y'): view_scroll(-1)
+
 	elif ch == ord('g'):
 		ch = getchar(0)
 
