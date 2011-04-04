@@ -427,7 +427,7 @@ def getstr():
 		if c == ord('\n'):
 			break
 
-		elif c == 033:
+		elif c == 033 or c == 31:
 			ret = ''
 			break
 
@@ -509,6 +509,8 @@ def dosearch(reverse):
 def seek():
 	status('seek to: ')
 	spos = getstr()
+	if spos == None:
+		return
 	try:
 		if spos.find(':'):
 			segments = spos.split(':')
