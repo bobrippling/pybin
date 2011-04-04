@@ -49,16 +49,9 @@ def dump_map(pre, m):
 # socket/mpd code
 
 class mpcpyException(Exception):
-	def __init__(self, e):
-		self.e = e
-	def __str__(self):
-		return self.e
-
+	pass
 class MPDException(Exception):
-	def __init__(self, e):
-		self.e = e
-	def __str__(self):
-		return self.e
+	pass
 
 def confirm():
 	global stdscr
@@ -84,13 +77,12 @@ def mpd_connect():
 		pw = parts[0]
 		host = ''.join(parts[1:])
 
-
 	try:
 		port = int(port)
 		mpd_host, mpd_port = host, port
 		sock.connect((host, port))
 	except Exception as e:
-		raise MPDException("Couldn't connect to mpd: %s" % e)
+		raise MPDException("Couldn't connect to mpd @ %s:%s - %s" % (host, port, e))
 	except ValueError as e:
 		raise MPDException("Couldn't parse port (%s): %s" % (port, e))
 
