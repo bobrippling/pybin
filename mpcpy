@@ -759,6 +759,7 @@ try:
 	curses.cbreak()
 	curses.noecho()
 	stdscr.keypad(1)
+	stdscr.addstr(0, 0, 'connecting...')
 except Exception as e:
 	print "Couldn't start ncurses: %s" % e
 	sys.exit(1)
@@ -790,3 +791,4 @@ except Exception:
 
 if len(printme):
 	print >>sys.stderr, printme
+	sys.exit(1)
