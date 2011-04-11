@@ -164,6 +164,9 @@ def mpd_status():
 	mpd_current    = list_to_map(mpd_cmd("currentsong"))
 	mpd_statusdict = list_to_map(mpd_cmd("status"))
 
+	if 'state' not in mpd_statusdict.keys():
+		mpd_statusdict['state'] = 'stop'
+
 	# FIXME: check for vitals and throwdown if not found
 	for k in ['random', 'repeat', 'consume', 'xfade', 'single']:
 		mpd_statusdict[k] = int(mpd_statusdict[k])
@@ -250,11 +253,6 @@ def draw():
 	global stdscr, mpd_playlist, mpd_statusdict, mpd_current
 	global draw_top, draw_selected
 
-	if 'state' in mpd_statusdict.keys():
-		state = mpd_statusdict['state']
-	else:
-		state = '<no state>'
-
 	if 'Title' in mpd_current.keys():
 		current_song = mpd_current['Title']
 	elif 'file' in mpd_current.keys():
@@ -280,7 +278,7 @@ def draw():
 		'x' if mpd_statusdict['xfade'  ] > 0 else '-',
 		'c' if mpd_statusdict['consume'] > 0 else '-',
 		draw_selected + 1, len(mpd_playlist),
-		state, current_song, mpd_time(time_now), mpd_time(time_fin)))
+		mpd_statusdict['state'], current_song, mpd_time(time_now), mpd_time(time_fin)))
 
 	maxen = stdscr.getmaxyx()
 	maxy  = maxen[0]
