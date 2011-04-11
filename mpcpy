@@ -109,7 +109,7 @@ def mpd_connect():
 		raise MPDException("Invalid version string from mpd: %s" % data[2])
 
 	if len(pw):
-		mpd_cmd('password "%s"' % pw)
+		mpd_password(pw)
 	# good to go, end of function
 
 
@@ -235,6 +235,7 @@ def mpd_random():     global mpd_statusdict; mpd_noreply("random %d"    % (1-mpd
 def mpd_repeat():     global mpd_statusdict; mpd_noreply("repeat %d"    % (1-mpd_statusdict['repeat']))
 def mpd_consume():    global mpd_statusdict; mpd_noreply("consume %d"   % (1-mpd_statusdict['consume']))
 def mpd_single():     global mpd_statusdict; mpd_noreply("single %d"    % (1-mpd_statusdict['single']))
+def mpd_password(pw): mpd_noreply('password "%s"' % pw)
 
 def mpd_crossfade():
 	global mpd_statusdict, mpd_xfade
@@ -518,6 +519,14 @@ def seek():
 
 	mpd_seek(pos) # outside the try:, so mpd errors are thrown back
 
+def password():
+	status('password: ')
+	pw = getstr()
+	if pw == None:
+		return
+	mpd_password(pw)
+
+
 def getchar(timeout = 1):
 
 	if timeout:
@@ -619,74 +628,80 @@ def keys():
 
 	need_mpd_refresh = False
 
-	if False: pass # lolol
-	elif ch == ord('q'):      return False
-	elif ch == ord('j'):      view_inc(1)
-	elif ch == ord('k'):      view_dec(1)
-	elif ch == ctrl_and('d'): view_set(draw_selected + maxy / 2)
-	elif ch == ctrl_and('u'): view_set(draw_selected - maxy / 2)
-	elif ch == ctrl_and('f'): view_set(draw_selected + maxy)
-	elif ch == ctrl_and('b'): view_set(draw_selected - maxy)
-	elif ch == ctrl_and('e'): view_scroll(+1)
-	elif ch == ctrl_and('y'): view_scroll(-1)
+	try:
+		if False: pass # lolol
+		elif ch == ord('q'):      return False
+		elif ch == ord('j'):      view_inc(1)
+		elif ch == ord('k'):      view_dec(1)
+		elif ch == ctrl_and('d'): view_set(draw_selected + maxy / 2)
+		elif ch == ctrl_and('u'): view_set(draw_selected - maxy / 2)
+		elif ch == ctrl_and('f'): view_set(draw_selected + maxy)
+		elif ch == ctrl_and('b'): view_set(draw_selected - maxy)
+		elif ch == ctrl_and('e'): view_scroll(+1)
+		elif ch == ctrl_and('y'): view_scroll(-1)
 
-	elif ch == ord('g'):
-		ch = getchar(0)
+		elif ch == ord('g'):
+			ch = getchar(0)
 
-		if ch == ord('g'):
-			view_set(0)
-		elif ch == ord('s'):
-			seek()
-		else:
-			status("unknown g-key %d - 'g' for top, 's' for seek" % ch)
+			if ch == ord('g'):
+				view_set(0)
+			elif ch == ord('s'):
+				seek()
+			else:
+				status("unknown g-key %d - 'g' for top, 's' for seek" % ch)
 
-	elif ch == ord('i'):
-		info(mpd_current)
+		elif ch == ord('i'):
+			info(mpd_current)
 
-	elif ch == ord('G'):      view_set(len(mpd_playlist) - 1)
+		elif ch == ord('G'):      view_set(len(mpd_playlist) - 1)
 
-	elif ch == ord('H'):
-		draw_selected = draw_top + SCROLL_OFF
-		clip_draw_selected()
-	elif ch == ord('L'):
-		draw_selected = draw_top + maxy - SCROLL_OFF - 2 # 2 for the status bars
-		clip_draw_selected()
-	elif ch == ord('M'):
-		draw_selected = draw_top + maxy / 2
-		clip_draw_selected()
+		elif ch == ord('H'):
+			draw_selected = draw_top + SCROLL_OFF
+			clip_draw_selected()
+		elif ch == ord('L'):
+			draw_selected = draw_top + maxy - SCROLL_OFF - 2 # 2 for the status bars
+			clip_draw_selected()
+		elif ch == ord('M'):
+			draw_selected = draw_top + maxy / 2
+			clip_draw_selected()
 
-	elif ch == ord('d'):  need_mpd_refresh = True; mpd_remove()
-	elif ch == ord('p'):  need_mpd_refresh = True; mpd_toggle()
-	elif ch == ord('s'):  need_mpd_refresh = True; mpd_stop()
-	elif ch == ord('\n'): need_mpd_refresh = True; mpd_play(draw_selected)
+		elif ch == ord('d'):  need_mpd_refresh = True; mpd_remove()
+		elif ch == ord('p'):  need_mpd_refresh = True; mpd_toggle()
+		elif ch == ord('s'):  need_mpd_refresh = True; mpd_stop()
+		elif ch == ord('\n'): need_mpd_refresh = True; mpd_play(draw_selected)
 
-	elif ch == ord('>'):  need_mpd_refresh = True; mpd_next()
-	elif ch == ord('<'):  need_mpd_refresh = True; mpd_prev()
+		elif ch == ord('>'):  need_mpd_refresh = True; mpd_next()
+		elif ch == ord('<'):  need_mpd_refresh = True; mpd_prev()
 
-	elif ch == ord('r') or ch == ord('1'):  need_mpd_refresh = True; mpd_repeat()
-	elif ch == ord('z') or ch == ord('2'):  need_mpd_refresh = True; mpd_random()
-	elif ch == ord('y') or ch == ord('3'):  need_mpd_refresh = True; mpd_single()
-	elif ch == ord('x') or ch == ord('4'):  need_mpd_refresh = True; mpd_crossfade() # FIXME: prompt
-	elif ch == ord('c') or ch == ord('5'):  need_mpd_refresh = True; mpd_consume()
+		elif ch == ord('r') or ch == ord('1'):  need_mpd_refresh = True; mpd_repeat()
+		elif ch == ord('z') or ch == ord('2'):  need_mpd_refresh = True; mpd_random()
+		elif ch == ord('y') or ch == ord('3'):  need_mpd_refresh = True; mpd_single()
+		elif ch == ord('x') or ch == ord('4'):  need_mpd_refresh = True; mpd_crossfade() # FIXME: prompt
+		elif ch == ord('c') or ch == ord('5'):  need_mpd_refresh = True; mpd_consume()
 
-	elif ch == ord('/') or ch == ord('?') or ch == ord('n') or ch == ord('N'):
-		go = True
+		elif ch == ord('/') or ch == ord('?') or ch == ord('n') or ch == ord('N'):
+			go = True
 
-		if ch == ord('/') or ch == ord('?'):
-			search_rev = 0 if ch == ord('/') else 1
-			go = getsearch(search_rev)
+			if ch == ord('/') or ch == ord('?'):
+				search_rev = 0 if ch == ord('/') else 1
+				go = getsearch(search_rev)
 
-		if go:
-			order_adj = search_rev
-			if ch == ord('N'):
-				order_adj = 1 if order_adj == 0 else 0
-			dosearch(order_adj)
+			if go:
+				order_adj = search_rev
+				if ch == ord('N'):
+					order_adj = 1 if order_adj == 0 else 0
+				dosearch(order_adj)
 
-	elif ch == ord('o'):  view_current()
+		elif ch == ord('o'):  view_current()
 
-	elif ch == 410: status('')
+		elif ch == ord('P'):
+			password()
 
-	else: status("unknown key %d" % ch)
+		elif ch == 410: status('')
+
+		else: status("unknown key %d" % ch)
+	except MPDException as e:
+		status("error: %s" % e)
 
 	if need_mpd_refresh:
 		global laststatus
