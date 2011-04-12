@@ -12,6 +12,12 @@ SCROLL_OFF     = 5
 CURSES_TIMEOUT = 250
 SLEEP_TIME     = 1
 
+# relative differences
+SPACE_TIME     = 2
+SPACE_ARTIST   = 5
+SPACE_TITLE    = 8
+SPACE_ALBUM    = 4
+
 # timing
 laststatus = 0
 
@@ -316,19 +322,19 @@ def draw():
 		title  = mpd_playlist[i]['Title' ] if  'Title'  in mpd_playlist[i].keys() else ''
 		album  = mpd_playlist[i]['Album' ] if  'Album'  in mpd_playlist[i].keys() else ''
 
-		# FIXME: don't clip fields until their width is calculated
-		time   = mpd_time(time)[:8]
-		artist = artist[:20]
-		title  = title[ :35]
-		album  = album[ :20]
+		scale = float(maxx) / float(SPACE_TIME + SPACE_ARTIST + SPACE_TITLE + SPACE_ALBUM)
 
-		scale = float(maxx) / float(8+20+30+20)
+		time   = mpd_time(time)[:int(SPACE_TIME   * scale)]
+		artist = artist[        :int(SPACE_ARTIST * scale)]
+		title  = title[         :int(SPACE_TITLE  * scale)]
+		album  = album[         :int(SPACE_ALBUM  * scale)]
+
 		try:
 			stdscr.addstr("%-*s %-*s %-*s %-*s" % (
-				int( 8 * scale), time,
-				int(20 * scale), artist,
-				int(30 * scale), title,
-				int(20 * scale), album
+				int(SPACE_TIME   * scale), time,
+				int(SPACE_ARTIST * scale), artist,
+				int(SPACE_TITLE  * scale), title,
+				int(SPACE_ALBUM  * scale), album
 				), attr)
 		except Exception:
 			pass
@@ -746,15 +752,19 @@ try:
 	stdscr = curses.initscr()
 
 	curses.start_color()
-	curses.use_default_colors()
-	curses.init_pair(curses.COLOR_BLACK,   -1,                   -1)
-	curses.init_pair(curses.COLOR_GREEN,   curses.COLOR_GREEN,   -1)
-	curses.init_pair(curses.COLOR_WHITE,   curses.COLOR_WHITE,   -1)
-	curses.init_pair(curses.COLOR_RED,     curses.COLOR_RED,     -1)
-	curses.init_pair(curses.COLOR_CYAN,    curses.COLOR_CYAN,    -1)
-	curses.init_pair(curses.COLOR_MAGENTA, curses.COLOR_MAGENTA, -1)
-	curses.init_pair(curses.COLOR_BLUE,    curses.COLOR_BLUE,    -1)
-	curses.init_pair(curses.COLOR_YELLOW,  curses.COLOR_YELLOW,  -1)
+	try:
+		# ignore colour failures
+		curses.use_default_colors()
+		curses.init_pair(curses.COLOR_BLACK,   -1,                   -1)
+		curses.init_pair(curses.COLOR_GREEN,   curses.COLOR_GREEN,   -1)
+		curses.init_pair(curses.COLOR_WHITE,   curses.COLOR_WHITE,   -1)
+		curses.init_pair(curses.COLOR_RED,     curses.COLOR_RED,     -1)
+		curses.init_pair(curses.COLOR_CYAN,    curses.COLOR_CYAN,    -1)
+		curses.init_pair(curses.COLOR_MAGENTA, curses.COLOR_MAGENTA, -1)
+		curses.init_pair(curses.COLOR_BLUE,    curses.COLOR_BLUE,    -1)
+		curses.init_pair(curses.COLOR_YELLOW,  curses.COLOR_YELLOW,  -1)
+	except:
+		pass
 
 	curses.cbreak()
 	curses.noecho()
