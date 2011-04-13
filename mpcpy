@@ -529,6 +529,7 @@ def password():
 	pw = getstr()
 	if pw == None:
 		return
+	status('password: %s' % ("*" * len(pw)))
 	mpd_password(pw)
 
 
