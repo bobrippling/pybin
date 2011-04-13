@@ -7,6 +7,10 @@ import re
 import time
 import string
 
+# TODO: check for playlist changes
+#       ability to change the playlist
+#       output control
+
 # const
 SCROLL_OFF     = 5
 CURSES_TIMEOUT = 250
@@ -62,6 +66,10 @@ def confirm():
 		return True
 	return False
 
+def hoststr():
+	global mpd_host, mpd_port
+	return "%s:%s" % (mpd_host, mpd_port)
+
 def mpd_connect():
 	global sock, mpd_host, mpd_port
 	import os
@@ -82,7 +90,7 @@ def mpd_connect():
 		mpd_host, mpd_port = host, port
 		sock.connect((host, port))
 	except Exception as e:
-		raise MPDException("Couldn't connect to mpd @ %s:%s - %s" % (host, port, e))
+		raise MPDException("Couldn't connect to mpd @ %s - %s" % (hoststr(), e))
 	except ValueError as e:
 		raise MPDException("Couldn't parse port (%s): %s" % (port, e))
 
@@ -100,8 +108,8 @@ def mpd_connect():
 		if int(vers[0]) != 0 or int(vers[1]) != 16: # or int(vers[2]) != 0:
 			global stdscr
 
-			stdscr.addstr("MPD (%s:%d) version: %s, continue? (Y/n) " %
-					(host, port, data[2]))
+			stdscr.addstr("MPD (%s) version: %s, continue? (Y/n) " %
+					(hoststr(), data[2]))
 
 			if not confirm():
 				raise MPDException("Invalid MPD version: %s (reply: %d)" % (data[2], ch))
@@ -430,15 +438,6 @@ def getstr():
 				ret = ''
 				break # escape
 
-		elif c == 259:
-			# up
-			# TODO: history
-			pass
-		elif c == 258:
-			# down
-			# TODO: history
-			pass
-
 		elif chrd in string.printable:
 			ret += chrd
 
@@ -676,12 +675,9 @@ def keys():
 
 
 def run():
-	global stdscr, laststatus, mpd_host, mpd_port
+	global stdscr, laststatus
 
-	status("connected to mpd @ %s:%d" % (mpd_host, mpd_port))
-
-	# TODO: check for playlist changes
-	# TODO: ability to alter playlist
+	status("connected to mpd @ %s" % hoststr())
 
 	while True:
 		draw()
