@@ -584,7 +584,7 @@ def info(current):
 					c = '-'
 				stdscr.addch(y, x, c, attr)
 
-	window(x - 1, y - 1, w - 1, h/2,
+	window(x - 1, y - 1, w, h/2,
 			curses.A_BOLD | curses.color_pair(curses.COLOR_MAGENTA))
 
 	attr = [ 'file', 'Title', 'Artist', 'Album', 'Time', 'Track', 'Genre' ]
