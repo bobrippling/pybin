@@ -242,6 +242,7 @@ def mpd_repeat():     global mpd_statusdict; mpd_noreply("repeat %d"    % (1-mpd
 def mpd_consume():    global mpd_statusdict; mpd_noreply("consume %d"   % (1-mpd_statusdict['consume']))
 def mpd_single():     global mpd_statusdict; mpd_noreply("single %d"    % (1-mpd_statusdict['single']))
 def mpd_password(pw): mpd_noreply('password "%s"' % pw)
+def mpd_move(a, b):   mpd_noreply('move "%s" "%s"' % (a, b))
 
 def mpd_crossfade():
 	global mpd_statusdict, mpd_xfade
@@ -684,6 +685,23 @@ def keys():
 		elif ch == ord('y') or ch == ord('3'):  need_mpd_refresh = True; mpd_single()
 		elif ch == ord('x') or ch == ord('4'):  need_mpd_refresh = True; mpd_crossfade() # FIXME: prompt
 		elif ch == ord('c') or ch == ord('5'):  need_mpd_refresh = True; mpd_consume()
+
+		elif ch == ord('w') or ch == ord('W'):
+			# shift song up or down one
+			up = ch == ord('W')
+
+			if (draw_selected > 0                   if     up else True) and \
+				 (draw_selected < len(mpd_playlist)-1 if not up else True):
+
+				to = draw_selected + (-1 if up else 1)
+				mpd_move(draw_selected, to)
+
+				tmp = mpd_playlist[draw_selected]
+				mpd_playlist[draw_selected] = mpd_playlist[to]
+				mpd_playlist[to] = tmp
+				draw_selected = to
+			else:
+				status("can't move from there")
 
 		elif ch == ord('/') or ch == ord('?') or ch == ord('n') or ch == ord('N'):
 			go = True
