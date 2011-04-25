@@ -368,6 +368,11 @@ def status(s):
 	stdscr.clrtoeol()
 	stdscr.addstr(s)
 
+def set_draw_top(n):
+	global draw_top
+	draw_top = n
+	status('')
+
 def view_inc(n):
 	global draw_selected, draw_top
 	global stdscr, mpd_playlist
@@ -382,7 +387,7 @@ def view_inc(n):
 		# don't inc draw_top if draw_top + maxy < len(mpd_playlist)
 		if draw_selected - draw_top > maxy - SCROLL_OFF and \
 				draw_top + maxy < len(mpd_playlist):
-			draw_top = draw_selected - maxy + SCROLL_OFF
+			set_draw_top(draw_selected - maxy + SCROLL_OFF)
 
 def view_dec(n):
 	global draw_selected, draw_top
@@ -392,9 +397,9 @@ def view_dec(n):
 		if draw_selected < 0: draw_selected = 0
 
 		if draw_selected - draw_top < SCROLL_OFF:
-			draw_top = draw_selected - SCROLL_OFF
+			set_draw_top(draw_selected - SCROLL_OFF)
 			if draw_top < 0:
-				draw_top = 0
+				set_draw_top(0)
 
 
 def view_set(n):
@@ -408,12 +413,12 @@ def view_set(n):
 		n = len(mpd_playlist) - 1
 
 	draw_selected = n
-	draw_top = draw_selected - maxy / 2
+	set_draw_top(draw_selected - maxy / 2)
 
 	if draw_top > len(mpd_playlist) - maxy:
-		draw_top = len(mpd_playlist) - maxy
+		set_draw_top(len(mpd_playlist) - maxy)
 	if draw_top < 0:
-		draw_top = 0
+		set_draw_top(0)
 
 def view_current():
 	global mpd_current
