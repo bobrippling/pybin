@@ -244,12 +244,17 @@ def mpd_single():     global mpd_statusdict; mpd_noreply("single %d"    % (1-mpd
 def mpd_password(pw): mpd_noreply('password "%s"' % pw)
 def mpd_move(a, b):   mpd_noreply('move "%s" "%s"' % (a, b))
 
-def mpd_crossfade():
+def mpd_crossfade(n = -1):
 	global mpd_statusdict, mpd_xfade
-	if mpd_statusdict['xfade'] == 0:
-		mpd_noreply("crossfade %d" % mpd_xfade)
+
+	if n == -1:
+		if mpd_statusdict['xfade'] == 0:
+			mpd_noreply("crossfade %d" % mpd_xfade)
+		else:
+			mpd_noreply("crossfade 0")
 	else:
-		mpd_noreply("crossfade 0")
+		mpd_xfade = n
+		mpd_noreply("crossfade %d" % mpd_xfade)
 
 def mpd_setvol(v):    mpd_noreply("setvol %d" % v)
 def mpd_volume(v):    mpd_noreply("volume %d" % v)
@@ -435,15 +440,6 @@ def getstr():
 			else:
 				ret = ''
 				break # escape
-
-		elif c == 259:
-			# up
-			# TODO: history
-			pass
-		elif c == 258:
-			# down
-			# TODO: history
-			pass
 
 		elif chrd in string.printable:
 			ret += chrd
@@ -683,8 +679,24 @@ def keys():
 		elif ch == ord('r') or ch == ord('1'):  need_mpd_refresh = True; mpd_repeat()
 		elif ch == ord('z') or ch == ord('2'):  need_mpd_refresh = True; mpd_random()
 		elif ch == ord('y') or ch == ord('3'):  need_mpd_refresh = True; mpd_single()
-		elif ch == ord('x') or ch == ord('4'):  need_mpd_refresh = True; mpd_crossfade() # FIXME: prompt
 		elif ch == ord('c') or ch == ord('5'):  need_mpd_refresh = True; mpd_consume()
+		elif ch == ord('x') or ch == ord('4'):  need_mpd_refresh = True; mpd_crossfade()
+		elif ch == ord('X'):
+			status('xfade: ')
+
+			s = getstr()
+			if s != None:
+				good = False
+				try:
+					n = int(s)
+					good = True
+				except:
+					status('need number for xfade')
+
+				if good:
+					mpd_crossfade(n)
+					status('xfade set to %d' % mpd_xfade)
+					need_mpd_refresh = True
 
 		elif ch == ord('w') or ch == ord('W'):
 			# shift song up or down one
@@ -744,7 +756,6 @@ def run():
 	status("connected to mpd @ %s:%d" % (mpd_host, mpd_port))
 
 	# TODO: check for playlist changes
-	# TODO: ability to alter playlist
 
 	while True:
 		draw()
