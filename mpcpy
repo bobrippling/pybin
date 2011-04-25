@@ -590,9 +590,9 @@ def info(current):
 	attr = [ 'file', 'Title', 'Artist', 'Album', 'Time', 'Track', 'Genre' ]
 
 	i = 0
-	for a in range(0, len(attr)):
+	for a in attr:
 		try:
-			s = attr[a] + ': ' + current[attr[a]]
+			s = a + ': ' + current[a]
 			stdscr.addstr(y + i, x, s[:w - 4])
 			i += 1
 		except:
