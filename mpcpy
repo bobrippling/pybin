@@ -454,9 +454,6 @@ def getstr(pw = 0):
 		elif c == 127 or c == 263 or c == ord('\b'):
 			if len(ret):
 				ret = ret[:len(ret)-1]
-			else:
-				ret = ''
-				break # escape
 
 		elif chrd in string.printable:
 			ret += chrd
