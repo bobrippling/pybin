@@ -158,7 +158,11 @@ def mpd_cmd(cmd):
 				ret = lines[:len(lines)-2] # all but "OK"
 				return ret
 			elif last[:3] == 'ACK':
-				raise MPDException("MPD error: %s (from \"%s\")" % (last, cmd))
+				if cmd.find('password') == 0:
+					extra = ''
+				else:
+					extra = ' (from "%s")' % cmd
+				raise MPDException("MPD error: %s%s" % (last, extra))
 
 def list_to_map(lst):
 	curmap = {}
@@ -424,7 +428,7 @@ def view_current():
 	global mpd_current
 	view_set(mpd_current['Pos'])
 
-def getstr():
+def getstr(pw = 0):
 	global stdscr
 
 	stdscr.timeout(-1)
@@ -458,7 +462,7 @@ def getstr():
 			ret += chrd
 
 		stdscr.move(y, x)
-		stdscr.addstr(ret)
+		stdscr.addstr(('*' * len(ret)) if pw else ret)
 		stdscr.refresh()
 
 	stdscr.timeout(CURSES_TIMEOUT)
@@ -537,10 +541,10 @@ def seek():
 
 def password():
 	status('password: ')
-	pw = getstr()
+	pw = getstr(1)
 	if pw == None:
 		return
-	status('password: %s' % ("*" * len(pw)))
+	status('password accepted')
 	mpd_password(pw)
 
 
