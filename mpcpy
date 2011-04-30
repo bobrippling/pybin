@@ -669,7 +669,7 @@ def keys():
 				status("unknown g-key %d - 'g' for top, 's' for seek" % ch)
 
 		elif ch == ord('i'):
-			info(mpd_current)
+			info(mpd_playlist[draw_selected])
 
 		elif ch == ord('G'):      view_set(len(mpd_playlist) - 1)
 
