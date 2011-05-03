@@ -47,6 +47,8 @@ search_regex   = None
 search_str     = ''
 search_rev     = 1
 
+marks          = {}
+
 def dump_list(pre, l):
 	for i in l:
 		sys.stderr.write("%s: %s\n" % (pre, i))
@@ -561,6 +563,21 @@ def getchar(timeout = 1):
 
 	return ret
 
+def window(start_x, start_y, w, h, attr = 0):
+	end_x, end_y = start_x + w - 1, start_y + h - 1
+
+	for x in range(start_x, start_x + w):
+		for y in range(start_y, start_y + h):
+			c = ' '
+			if x in (start_x, end_x):
+				if y in (start_y, end_y):
+					c = '+'
+				else:
+					c = '|'
+			elif y in (start_y, end_y):
+				c = '-'
+			stdscr.addch(y, x, c, attr)
+
 def info(current):
 	global stdscr
 	yx = stdscr.getmaxyx()
@@ -569,21 +586,6 @@ def info(current):
 
 	x = 1
 	y = h / 2 - h / 4
-
-	def window(start_x, start_y, w, h, attr = 0):
-		end_x, end_y = start_x + w - 1, start_y + h - 1
-
-		for x in range(start_x, start_x + w):
-			for y in range(start_y, start_y + h):
-				c = ' '
-				if x in (start_x, end_x):
-					if y in (start_y, end_y):
-						c = '+'
-					else:
-						c = '|'
-				elif y in (start_y, end_y):
-					c = '-'
-				stdscr.addch(y, x, c, attr)
 
 	window(x - 1, y - 1, w, h/2,
 			curses.A_BOLD | curses.color_pair(curses.COLOR_MAGENTA))
@@ -601,6 +603,88 @@ def info(current):
 
 	stdscr.addstr(y + len(attr) + 1, x, 'Any key to continue...')
 	getchar(0)
+
+def help():
+	helps = {
+		'q': 'quit',
+
+		'k': 'up',
+		'j': 'down',
+		'^d': 'pgdn/2',
+		'^u': 'pgup/2',
+		'^f': 'pgdn',
+		'^b': 'pgup',
+		'^e': 'scroll down',
+		'^y': 'scroll up',
+
+		'gg': 'top',
+		'gs': 'seek',
+		'G': 'bottom',
+
+		'H': 'jump to top of screen',
+		'M': 'jump to middle of screen',
+		'L': 'jump to bottom of screen',
+
+		'o': 'view current',
+
+		'\'X': 'goto mark X',
+		'mX': 'mark X',
+
+		'i': 'show selected info',
+
+		'<CR>': 'play selected',
+		'p': 'toggle playing',
+		's': 'stop playing',
+		'd': 'remove selected song',
+
+		'>': 'next',
+		'<': 'prev',
+
+		'r | 1': 'repeat',
+		'z | 2': 'random',
+		'y | 3': 'single',
+		'c | 5': 'consume',
+		'x | 4': 'xfade',
+
+		'X': 'set xfade',
+
+		'w': 'move song down',
+		'W': 'move song up',
+
+		'/': 'prompt + search forward',
+		'?': 'prompt + search backward',
+		'n': 'search next',
+		'N': 'search reverse',
+
+		'P': 'enter mpd password',
+
+		'h': 'show this help',
+	}
+
+	global stdscr
+
+	yx = stdscr.getmaxyx()
+
+	h = yx[0] - 1
+	w = yx[1] - 1
+
+	stdscr.clear()
+	y = 0
+	for k in sorted(helps.keys()):
+		s = '%s:\t\t%s' % (k, helps[k])
+		stdscr.addstr(y, 0, s[:w - 4])
+		y += 1
+		if y >= h:
+			stdscr.addstr(y, 0, 'Any key for next page...')
+			getchar(0)
+			stdscr.clear()
+			y = 0
+
+	stdscr.refresh()
+	stdscr.addstr(y, 0, 'Any key to continue...')
+	getchar(0)
+	stdscr.clear()
+
 
 def view_scroll(inc):
 	global draw_top, draw_selected, mpd_playlist
@@ -623,6 +707,15 @@ def view_scroll(inc):
 			if y < draw_selected:
 				draw_selected = y
 
+
+def mark_add(ch, pos):
+	marks[ch] = pos
+
+def mark_get(ch):
+	try:
+		return marks[ch]
+	except:
+		return -1
 
 def keys():
 	global draw_selected, draw_top, stdscr, search_rev
@@ -667,6 +760,18 @@ def keys():
 				seek()
 			else:
 				status("unknown g-key %d - 'g' for top, 's' for seek" % ch)
+
+		elif ch == ord("'"):
+			ch = getchar(0)
+			pos = mark_get(ch)
+			if pos == -1:
+				status("unset mark")
+			else:
+				view_set(pos)
+
+		elif ch == ord('m'):
+			ch = getchar(0)
+			mark_add(ch, draw_selected)
 
 		elif ch == ord('i'):
 			info(mpd_playlist[draw_selected])
@@ -750,7 +855,10 @@ def keys():
 
 		elif ch == 410: status('')
 
-		else: status("unknown key %d" % ch)
+		elif ch == ord('h'):
+			help()
+
+		else: status("unknown key %d - 'h' for help" % ch)
 	except MPDException as e:
 		status("error: %s" % e)
 
