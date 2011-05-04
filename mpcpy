@@ -6,9 +6,9 @@ import sys, errno, os
 import re
 import time
 import string
+import select
 
-# TODO: check for playlist changes
-#       ability to change the playlist
+# TODO: ability to change the playlist - add+remove songs/select playlist
 #       output control
 
 # const
@@ -133,12 +133,11 @@ def mpd_close():
 	global sock
 	sock.close()
 
-
-def mpd_cmd(cmd):
-	"""Send 'cmd' to mpd, and read lines until we get an 'OK'"""
+def mpd_raw(cmd):
 	global sock
 	sock.send(cmd + '\n')
 
+def mpd_readlines(prevcmd):
 	lines = []
 	saved = ''
 	while True:
@@ -146,25 +145,31 @@ def mpd_cmd(cmd):
 
 		lastnl = got.rfind('\n')
 		if lastnl == -1:
-			# FIXME: check for got.len eq 4096
-			time.sleep(0.2)
+			if len(got) == 4096:
+				raise MPDException('No newline found in server message')
+			time.sleep(0.5)
 			continue
 
-		got = filter(len, sock.recv(lastnl).split('\n'))
+		got = filter(len, sock.recv(lastnl + 1).split('\n'))
 
 		if len(got):
 			lines.extend(got)
 
 			last = lines[len(lines)-1]
 			if last == 'OK':
-				ret = lines[:len(lines)-2] # all but "OK"
+				ret = lines[:len(lines)-1] # all but "OK"
 				return ret
 			elif last[:3] == 'ACK':
-				if cmd.find('password') == 0:
+				if prevcmd.find('password') == 0:
 					extra = ''
 				else:
-					extra = ' (from "%s")' % cmd
+					extra = ' (from "%s")' % prevcmd
 				raise MPDException("MPD error: %s%s" % (last, extra))
+
+def mpd_cmd(cmd):
+	"""Send 'cmd' to mpd, and read lines until we get an 'OK'"""
+	mpd_raw(cmd)
+	return mpd_readlines(cmd)
 
 def list_to_map(lst):
 	curmap = {}
@@ -179,35 +184,31 @@ def list_to_map(lst):
 	return curmap
 
 
-def mpd_status():
-	global mpd_current, mpd_statusdict
-	mpd_current    = list_to_map(mpd_cmd("currentsong"))
+def mpd_getstate():
+	global mpd_statusdict
 	mpd_statusdict = list_to_map(mpd_cmd("status"))
-
 	if 'state' not in mpd_statusdict.keys():
 		mpd_statusdict['state'] = 'stop'
-
-	# FIXME: check for vitals and throwdown if not found
 	for k in ['random', 'repeat', 'consume', 'xfade', 'single']:
 		mpd_statusdict[k] = int(mpd_statusdict[k])
 
+def mpd_getplaying():
+	global mpd_current
+	mpd_current = list_to_map(mpd_cmd("currentsong"))
 	if 'Pos' in mpd_current.keys():
 		mpd_current['Pos'] = int(mpd_current['Pos'])
 	else:
 		mpd_current['Pos'] = 0
 
-
-def mpd_getplaylist():
-	data = mpd_cmd("playlistinfo")
-
-	mpd_playlist = []
+def mpd_parseplaylist(data):
+	ret = []
 	i = 0
 	while i < len(data):
 		curmap = {}
 		while i < len(data):
 			pos = data[i].find(':')
 			if pos == -1:
-				raise MPDException("mpd_getplaylist: no colon in line: \"%s\"" % data[i])
+				raise MPDException("mpd_parseplaylist: no colon in line: \"%s\"" % data[i])
 
 			key = data[i][:pos]
 			if key == 'file' and 'file' in curmap.keys():
@@ -215,9 +216,37 @@ def mpd_getplaylist():
 				break
 			curmap[key] = data[i][pos+2:]
 			i += 1
-		mpd_playlist.append(curmap)
+		ret.append(curmap)
+	return ret
+
+def mpd_getplaylist():
+	global mpd_playlist
+
+	data = mpd_cmd("playlistinfo")
+
+	mpd_playlist = mpd_parseplaylist(data)
 
 	return mpd_playlist # [ { 'file' : 'tim.mp3', 'Id' : 5 }, { 'file' : 'bob.mp3', 'Id' : 3 } ]
+
+
+def mpd_updateplaylist():
+	global mpd_statusdict, mpd_playlist
+
+	oldpl = mpd_statusdict['playlist'] # id
+	changes = mpd_cmd('plchanges %s' % oldpl)
+	mpd_getstate()
+	newlen = mpd_statusdict['playlistlength']
+
+	changes = mpd_parseplaylist(changes)
+
+	for track in changes:
+		for i in range(0, len(mpd_playlist)):
+			if mpd_playlist[i]['Id'] == track['Id']:
+				mpd_playlist[i] = track
+				mpd_playlist[i]['Pos'] = int(mpd_playlist[i]['Pos'])
+				break
+
+	mpd_playlist = sorted(mpd_playlist, key = lambda tr: int(tr['Pos']))
 
 
 def mpd_noreply(cmd):
@@ -272,6 +301,12 @@ def mpd_crossfade(n = -1):
 
 def mpd_setvol(v):    mpd_noreply("setvol %d" % v)
 def mpd_volume(v):    mpd_noreply("volume %d" % v)
+
+def mpd_idle(b):
+	if b:
+		mpd_raw('idle')
+	else:
+		mpd_noreply('noidle')
 
 # ----------------------------------------------------
 # ncurses code
@@ -510,7 +545,7 @@ def dosearch(reverse):
 
 		for w in words:
 			if search_regex.match(w[0]):
-				view_set(int(trax['Pos']))
+				view_set(trax['Pos'])
 				status("Found in %s" % w[1])
 				return
 	status("Couldn't find %s" % search_str)
@@ -717,19 +752,20 @@ def mark_get(ch):
 	except:
 		return -1
 
+def clip_draw_selected():
+	global draw_selected, mpd_playlist
+	if draw_selected >= len(mpd_playlist):
+		draw_selected = len(mpd_playlist) - 1
+	if draw_selected < 0:
+		draw_selected = 0
+
+
 def keys():
 	global draw_selected, draw_top, stdscr, search_rev
 	global mpd_current, mpd_playlist
 
 	def ctrl_and(n):
 		return ord(n) - ord('a') + 1
-
-	def clip_draw_selected():
-		global draw_selected, mpd_playlist
-		if draw_selected >= len(mpd_playlist):
-			draw_selected = len(mpd_playlist) - 1
-		if draw_selected < 0:
-			draw_selected = 0
 
 	maxy = stdscr.getmaxyx()[0]
 
@@ -853,7 +889,9 @@ def keys():
 		elif ch == ord('P'):
 			password()
 
-		elif ch == 410: status('')
+		elif ch == 410 or ch == 12:
+			# 12 = "\f" = ctrl+L
+			status('')
 
 		elif ch == ord('h'):
 			help()
@@ -872,24 +910,74 @@ def keys():
 # ----------------------------------------------------
 # general code
 
+def handle_idle():
+	lines = mpd_readlines('idle')
+
+	for l in lines:
+		# database
+		# update
+		# stored_playlist
+		# mixer
+		# output
+		# sticker
+		# subscription
+		# message
+
+		if l.find('changed: ') == 0:
+			l = l[9:]
+
+			if l == 'options':
+				# rzxyc opshuns
+				mpd_getstate()
+			elif l == 'playlist':
+				mpd_updateplaylist()
+				mpd_getplaying() # need to update the 'Pos' of playing
+				clip_draw_selected()
+			elif l == 'player':
+				# play, pause, etc
+				mpd_getstate()
+				mpd_getplaying()
+
+
+def input_wait():
+	global sock
+
+	mpd_idle(True)
+
+	while True:
+		try:
+			ready = select.select([sock, sys.stdin], [], [])
+			break
+		except Exception as (errno, strerr):
+			if errno != 4: # interrupted syscall
+				raise
+
+	# ready = ([sock?, sys.stdin?], [], [])
+
+	if sock in ready[0]:
+		handle_idle()
+	else:
+		mpd_idle(False)
+
+	if sys.stdin in ready[0]:
+		if not keys():
+			return False
+
+	return True
+
 
 def run():
 	global stdscr, laststatus
 
 	status("connected to mpd @ %s" % hoststr())
 
-	# TODO: check for playlist changes
 	while True:
 		draw()
 		stdscr.move(0, 0)
-		if not keys():
+		stdscr.refresh()
+		if not input_wait():
 			break
 
-		if laststatus + SLEEP_TIME < time.time():
-			# two seconds
-			# FIXME: use mpd_cmd("raw")
-			laststatus = time.time()
-			mpd_status()
 	mpd_close()
 
 
@@ -926,11 +1014,13 @@ except Exception as e:
 	sys.exit(1)
 
 printme = ''
+lastexception = None
 try:
 	mpd_connect()
 	mpd_playlist = mpd_getplaylist()
 
-	mpd_status()
+	mpd_getstate()
+	mpd_getplaying()
 
 	view_current()
 
@@ -941,7 +1031,8 @@ except KeyboardInterrupt as e:
 	printme = "interrupted!"
 except curses.error:
 	printme = "mpcpy needs more columns on the terminal"
-
+except Exception as e:
+	lastexception = e
 
 try:
 	curses.nocbreak()
@@ -953,3 +1044,6 @@ except Exception:
 if len(printme):
 	print >>sys.stderr, printme
 	sys.exit(1)
+elif lastexception is not None:
+	import traceback
+	traceback.print_exc(lastexception)
