@@ -446,6 +446,7 @@ def view_dec(n):
 def view_set(n):
 	global draw_selected, draw_top, stdscr, mpd_playlist
 
+	n = int(n)
 	maxy = stdscr.getmaxyx()[0] - 2
 
 	if n < 0:
