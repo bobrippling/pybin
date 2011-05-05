@@ -632,7 +632,11 @@ def info(current):
 	i = 0
 	for a in attr:
 		try:
-			s = a + ': ' + current[a]
+			val = current[a]
+			if a == 'Time':
+				val = mpd_time(val)
+
+			s = a + ': ' + val
 			stdscr.addstr(y + i, x, s[:w - 4])
 			i += 1
 		except:
