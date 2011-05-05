@@ -253,7 +253,10 @@ def mpd_updateplaylist():
 def mpd_noreply(cmd):
 	ret = mpd_cmd(cmd)
 	if len(ret) != 0:
-		raise MPDException("Invalid MPD reply: %s" % ret[0])
+		extra = ''
+		if cmd.find('password') == -1:
+			extra = " (from %s)" % cmd
+		raise MPDException("Invalid MPD reply: %s%s" % (ret[0], extra))
 
 def mpd_time(s):
 	n = int(s)
@@ -307,7 +310,10 @@ def mpd_idle(b):
 	if b:
 		mpd_raw('idle')
 	else:
-		mpd_noreply('noidle')
+		try:
+			mpd_noreply('noidle')
+		except:
+			pass
 
 # ----------------------------------------------------
 # ncurses code
