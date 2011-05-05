@@ -10,6 +10,7 @@ import select
 
 # TODO: ability to change the playlist - add+remove songs/select playlist
 #       output control
+#       get the time working again... duh
 
 # const
 SCROLL_OFF     = 5
