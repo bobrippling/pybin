@@ -638,7 +638,11 @@ def info(current):
 	i = 0
 	for a in attr:
 		try:
-			s = a + ': ' + current[a]
+			val = current[a]
+			if a == 'Time':
+				val = mpd_time(val)
+
+			s = a + ': ' + val
 			stdscr.addstr(y + i, x, s[:w - 4])
 			i += 1
 		except:
@@ -829,7 +833,7 @@ def keys():
 			draw_selected = draw_top + maxy - SCROLL_OFF - 2 # 2 for the status bars
 			clip_draw_selected()
 		elif ch == ord('M'):
-			draw_selected = draw_top + maxy / 2
+			draw_selected = draw_top + maxy / 2 - 1 # for status bar
 			clip_draw_selected()
 
 		elif ch == ord('d'):  need_mpd_refresh = True; mpd_remove()
