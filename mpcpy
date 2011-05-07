@@ -1039,10 +1039,19 @@ def run():
 
 
 if len(sys.argv) > 1:
-	cmd = "mpc "
-	for arg in sys.argv[1:]:
-		cmd += "%s " % arg
-	sys.exit(os.system(cmd))
+	if sys.argv[1] == 'compile':
+		import py_compile
+
+		target = 'mpcpy.pyc'
+		py_compile.compile(sys.argv[0], cfile=target)
+		print "compiled %s -> %s" % (sys.argv[0], target)
+		sys.exit(0)
+	else:
+		cmd = "mpc "
+		for arg in sys.argv[1:]:
+			cmd += "%s " % arg
+		sys.exit(os.system(cmd))
+
 
 trace("init()")
 
