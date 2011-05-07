@@ -16,15 +16,13 @@ import select
 SCROLL_OFF     = 5
 CURSES_TIMEOUT = 250
 SLEEP_TIME     = 1
+TRACING        = 0
 
 # relative differences
 SPACE_TIME     = 2
 SPACE_ARTIST   = 5
 SPACE_TITLE    = 8
 SPACE_ALBUM    = 4
-
-# timing
-laststatus = 0
 
 #  ncurses
 stdscr = None
@@ -57,6 +55,11 @@ def dump_list(pre, l):
 def dump_map(pre, m):
 	for k in m.keys():
 		sys.stderr.write("%s: %s => %s\n" % (pre, k, m[k]))
+
+def trace(s):
+	global TRACING
+	if TRACING:
+		print >>sys.stderr, "%d: %s" % (time.time(), s)
 
 # ----------------------------------------------------
 # socket/mpd code
@@ -221,13 +224,9 @@ def mpd_parseplaylist(data):
 	return ret
 
 def mpd_getplaylist():
-	global mpd_playlist
-
 	data = mpd_cmd("playlistinfo")
 
-	mpd_playlist = mpd_parseplaylist(data)
-
-	return mpd_playlist # [ { 'file' : 'tim.mp3', 'Id' : 5 }, { 'file' : 'bob.mp3', 'Id' : 3 } ]
+	return mpd_parseplaylist(data) # [ { 'file' : 'tim.mp3', 'Id' : 5 }, { 'file' : 'bob.mp3', 'Id' : 3 } ]
 
 
 def mpd_updateplaylist():
@@ -315,12 +314,60 @@ def mpd_idle(b):
 		except:
 			pass
 
+def mpd_playlists_get():
+	return map(lambda line: line[10:], filter(lambda line: line[:10] == 'playlist: ', mpd_cmd('lsinfo')))
+
+def mpd_playlist_append(name):
+	mpd_noreply('load "%s"' % name)
+
+def mpd_playlist_clear():
+	mpd_noreply('clear')
+
+def mpd_playlist_save(name):
+	mpd_noreply('save "%s"' % name)
+
+def playlist_save():
+	global stdscr
+	name = prompt('save playlist as: ')
+	if name is None:
+		return
+	mpd_playlist_save(name)
+	status('saved as %s' % name)
+
+def playlist_load():
+	global stdscr
+
+	stdscr.clear()
+	scroll_output(3, 0, mpd_playlists_get())
+
+	name = prompt('playlist: ')
+	if name is None:
+		return
+
+	mpd_playlist_append(name)
+	global mpd_playlist
+	mpd_playlist = mpd_getplaylist()
+
+def playlist_clear():
+	global mpd_playlist
+	mpd_playlist_clear()
+	mpd_playlist[:] = []
+
 # ----------------------------------------------------
 # ncurses code
 
 def draw():
 	global stdscr, mpd_playlist, mpd_statusdict, mpd_current
 	global draw_top, draw_selected
+
+	def statusstr():
+		return "[%s%s%s%s%s]" % (
+				'r' if mpd_statusdict['repeat' ] > 0 else '-',
+				'z' if mpd_statusdict['random' ] > 0 else '-',
+				'y' if mpd_statusdict['single' ] > 0 else '-',
+				'x' if mpd_statusdict['xfade'  ] > 0 else '-',
+				'c' if mpd_statusdict['consume'] > 0 else '-')
+
 
 	if 'Title' in mpd_current.keys():
 		current_song = mpd_current['Title']
@@ -340,12 +387,8 @@ def draw():
 	stdscr.move(0, 0)
 	stdscr.clrtoeol()
 
-	stdscr.addstr("[%s%s%s%s%s] showing %d/%d, %s: %s %s/%s" % (
-		'r' if mpd_statusdict['repeat' ] > 0 else '-',
-		'z' if mpd_statusdict['random' ] > 0 else '-',
-		'y' if mpd_statusdict['single' ] > 0 else '-',
-		'x' if mpd_statusdict['xfade'  ] > 0 else '-',
-		'c' if mpd_statusdict['consume'] > 0 else '-',
+	stdscr.addstr("%s showing %d/%d, %s: %s %s/%s" % (
+		statusstr(),
 		draw_selected + 1, len(mpd_playlist),
 		mpd_statusdict['state'], current_song, mpd_time(time_now), mpd_time(time_fin)))
 
@@ -473,8 +516,11 @@ def view_current():
 	global mpd_current
 	view_set(mpd_current['Pos'])
 
-def getstr(pw = 0):
+def prompt(str, pw = 0):
 	global stdscr
+
+	status(str)
+	stdscr.move(1, len(str))
 
 	stdscr.timeout(-1)
 
@@ -510,12 +556,11 @@ def getstr(pw = 0):
 	stdscr.timeout(CURSES_TIMEOUT)
 	return ret if len(ret) else None
 
+
 def getsearch(reverse):
 	global stdscr, search_regex, search_str
 
-	status('?' if reverse else '/')
-
-	search_str = getstr()
+	search_str = prompt('?' if reverse else '/')
 	if search_str is None:
 		return False
 
@@ -560,8 +605,7 @@ def dosearch(reverse):
 
 
 def seek():
-	status('seek to: ')
-	spos = getstr()
+	spos = prompt('seek to: ')
 	if spos == None:
 		return
 	try:
@@ -582,8 +626,7 @@ def seek():
 	mpd_seek(pos) # outside the try:, so mpd errors are thrown back
 
 def password():
-	status('password: ')
-	pw = getstr(1)
+	pw = prompt('password: ', 1)
 	if pw == None:
 		return
 	status('password accepted')
@@ -651,6 +694,26 @@ def info(current):
 	stdscr.addstr(y + len(attr) + 1, x, 'Any key to continue...')
 	getchar(0)
 
+def scroll_output(initial_y, x, lines):
+	global stdscr
+	h, w = stdscr.getmaxyx()
+
+	h -= 1
+	w -= 1
+
+	y = initial_y
+	for l in lines:
+		stdscr.addstr(y, x, l[:w - 4])
+		y += 1
+		if y >= h:
+			stdscr.addstr(y, x, 'Any key for next page...')
+			getchar(0)
+			stdscr.clear()
+			y = initial_y
+
+	stdscr.refresh()
+
+
 def help():
 	helps = {
 		'q': 'quit',
@@ -710,25 +773,8 @@ def help():
 
 	global stdscr
 
-	yx = stdscr.getmaxyx()
-
-	h = yx[0] - 1
-	w = yx[1] - 1
-
 	stdscr.clear()
-	y = 0
-	for k in sorted(helps.keys()):
-		s = '%s:\t\t%s' % (k, helps[k])
-		stdscr.addstr(y, 0, s[:w - 4])
-		y += 1
-		if y >= h:
-			stdscr.addstr(y, 0, 'Any key for next page...')
-			getchar(0)
-			stdscr.clear()
-			y = 0
-
-	stdscr.refresh()
-	stdscr.addstr(y, 0, 'Any key to continue...')
+	scroll_output(0, 0, map(lambda x: "%s:\t\t%s" % (x, helps[x]), sorted(helps.keys())))
 	getchar(0)
 	stdscr.clear()
 
@@ -785,8 +831,6 @@ def keys():
 	if ch is None:
 		return True
 
-	need_mpd_refresh = False
-
 	try:
 		if False: pass # lolol
 		elif ch == ord('q'):      return False
@@ -806,8 +850,16 @@ def keys():
 				view_set(0)
 			elif ch == ord('s'):
 				seek()
+
+			elif ch == ord('S'):
+				playlist_save()
+			elif ch == ord('L'):
+				playlist_load()
+			elif ch == ord('C'):
+				playlist_clear()
+
 			else:
-				status("unknown g-key %d - 'g' for top, 's' for seek" % ch)
+				status("unknown g-key %d" % ch)
 
 		elif ch == ord("'"):
 			ch = getchar(0)
@@ -836,23 +888,21 @@ def keys():
 			draw_selected = draw_top + maxy / 2 - 1 # for status bar
 			clip_draw_selected()
 
-		elif ch == ord('d'):  need_mpd_refresh = True; mpd_remove()
-		elif ch == ord('p'):  need_mpd_refresh = True; mpd_toggle()
-		elif ch == ord('s'):  need_mpd_refresh = True; mpd_stop()
-		elif ch == ord('\n'): need_mpd_refresh = True; mpd_play(draw_selected)
+		elif ch == ord('d'):  mpd_remove()
+		elif ch == ord('p'):  mpd_toggle()
+		elif ch == ord('s'):  mpd_stop()
+		elif ch == ord('\n'): mpd_play(draw_selected)
 
-		elif ch == ord('>'):  need_mpd_refresh = True; mpd_next()
-		elif ch == ord('<'):  need_mpd_refresh = True; mpd_prev()
+		elif ch == ord('>'):  mpd_next()
+		elif ch == ord('<'):  mpd_prev()
 
-		elif ch == ord('r') or ch == ord('1'):  need_mpd_refresh = True; mpd_repeat()
-		elif ch == ord('z') or ch == ord('2'):  need_mpd_refresh = True; mpd_random()
-		elif ch == ord('y') or ch == ord('3'):  need_mpd_refresh = True; mpd_single()
-		elif ch == ord('c') or ch == ord('5'):  need_mpd_refresh = True; mpd_consume()
-		elif ch == ord('x') or ch == ord('4'):  need_mpd_refresh = True; mpd_crossfade()
+		elif ch == ord('r') or ch == ord('1'):  mpd_repeat()
+		elif ch == ord('z') or ch == ord('2'):  mpd_random()
+		elif ch == ord('y') or ch == ord('3'):  mpd_single()
+		elif ch == ord('c') or ch == ord('5'):  mpd_consume()
+		elif ch == ord('x') or ch == ord('4'):  mpd_crossfade()
 		elif ch == ord('X'):
-			status('xfade: ')
-
-			s = getstr()
+			s = prompt('xfade: ')
 			if s != None:
 				good = False
 				try:
@@ -864,7 +914,6 @@ def keys():
 				if good:
 					mpd_crossfade(n)
 					status('xfade set to %d' % mpd_xfade)
-					need_mpd_refresh = True
 
 		elif ch == ord('w') or ch == ord('W'):
 			# shift song up or down one
@@ -911,10 +960,6 @@ def keys():
 		else: status("unknown key %d - 'h' for help" % ch)
 	except MPDException as e:
 		status("error: %s" % e)
-
-	if need_mpd_refresh:
-		global laststatus
-		laststatus = 0
 
 	return True
 
@@ -979,7 +1024,7 @@ def input_wait():
 
 
 def run():
-	global stdscr, laststatus
+	global stdscr
 
 	status("connected to mpd @ %s" % hoststr())
 
@@ -998,6 +1043,8 @@ if len(sys.argv) > 1:
 	for arg in sys.argv[1:]:
 		cmd += "%s " % arg
 	sys.exit(os.system(cmd))
+
+trace("init()")
 
 try:
 	stdscr = curses.initscr()
@@ -1035,6 +1082,8 @@ try:
 	mpd_getplaying()
 
 	view_current()
+
+	trace("calling run()")
 
 	run()
 except MPDException as e:
