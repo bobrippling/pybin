@@ -281,7 +281,7 @@ def mpd_seek(pos):
 	mpd_noreply("seek %d %d" % (mpd_current['Pos'], pos))
 
 def mpd_toggle():     global mpd_statusdict; mpd_pause() if mpd_statusdict['state'] == 'play' else mpd_play()
-def mpd_remove():     global draw_selected;  mpd_noreply("delete %d"    % draw_selected)
+def mpd_remove(n):    global draw_selected;  mpd_noreply("delete %d"    % n)
 
 def mpd_random():     global mpd_statusdict; mpd_noreply("random %d"    % (1-mpd_statusdict['random']))
 def mpd_repeat():     global mpd_statusdict; mpd_noreply("repeat %d"    % (1-mpd_statusdict['repeat']))
@@ -326,13 +326,24 @@ def mpd_playlist_clear():
 def mpd_playlist_save(name):
 	mpd_noreply('save "%s"' % name)
 
+def mpd_playlist_del(name):
+	mpd_noreply('rm "%s"' % name)
+
 def playlist_save():
 	global stdscr
 	name = prompt('save playlist as: ')
 	if name is None:
 		return
-	mpd_playlist_save(name)
-	status('saved as %s' % name)
+
+	try:
+		mpd_playlist_save(name)
+		status('saved as %s' % name)
+	except MPDException as e:
+		ret = prompt('playlist "%s" exists, overwrite? (y/n): ' % name)
+		if ret == 'y':
+			mpd_playlist_del(name)
+			mpd_playlist_save(name)
+			status('overwrote playlist %s' % name)
 
 def playlist_load():
 	global stdscr
@@ -352,6 +363,11 @@ def playlist_clear():
 	global mpd_playlist
 	mpd_playlist_clear()
 	mpd_playlist[:] = []
+
+def playlist_remove_current():
+	mpd_remove(draw_selected)
+	mpd_getplaylist()
+	mpd_getplaying()
 
 # ----------------------------------------------------
 # ncurses code
@@ -888,7 +904,7 @@ def keys():
 			draw_selected = draw_top + maxy / 2 - 1 # for status bar
 			clip_draw_selected()
 
-		elif ch == ord('d'):  mpd_remove()
+		elif ch == ord('d'):  playlist_remove_current()
 		elif ch == ord('p'):  mpd_toggle()
 		elif ch == ord('s'):  mpd_stop()
 		elif ch == ord('\n'): mpd_play(draw_selected)
@@ -1039,13 +1055,9 @@ def run():
 
 
 if len(sys.argv) > 1:
-	if sys.argv[1] == 'compile':
-		import py_compile
-
-		target = 'mpcpy.pyc'
-		py_compile.compile(sys.argv[0], cfile=target)
-		print "compiled %s -> %s" % (sys.argv[0], target)
-		sys.exit(0)
+	if len(sys.argv) == 2 and sys.argv[1] == '-T':
+		TRACING = True
+		print >>sys.stderr, "Tracing"
 	else:
 		cmd = "mpc "
 		for arg in sys.argv[1:]:
