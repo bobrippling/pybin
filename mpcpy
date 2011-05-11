@@ -762,6 +762,7 @@ def help():
 		'p': 'toggle playing',
 		's': 'stop playing',
 		'd': 'remove selected song',
+		'Q': 'queue song to play after current',
 
 		'>': 'next',
 		'<': 'prev',
@@ -908,6 +909,27 @@ def keys():
 		elif ch == ord('p'):  mpd_toggle()
 		elif ch == ord('s'):  mpd_stop()
 		elif ch == ord('\n'): mpd_play(draw_selected)
+
+		elif ch == ord('Q'):
+			go = False
+			try:
+				nam = mpd_playlist[draw_selected]['Title']
+				go = True
+			except:
+				status("nothing selected")
+
+			if go:
+				try:
+					if os.fork() == 0:
+						sys.stdout.close()
+						sys.stderr.close()
+						os.close(1)
+						os.close(2)
+						os.execvp('mpc_queue.pl', ['-f', nam])
+						sys.exit(-1)
+				except:
+					raise
+				status("queued %s" % nam)
 
 		elif ch == ord('>'):  mpd_next()
 		elif ch == ord('<'):  mpd_prev()
