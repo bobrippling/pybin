@@ -365,9 +365,10 @@ def playlist_clear():
 	mpd_playlist[:] = []
 
 def playlist_remove_current():
+	global draw_selected
 	mpd_remove(draw_selected)
-	mpd_getplaylist()
-	mpd_getplaying()
+	global mpd_playlist
+	mpd_playlist = mpd_getplaylist()
 
 # ----------------------------------------------------
 # ncurses code
@@ -827,6 +828,10 @@ def mark_get(ch):
 	except:
 		return -1
 
+def lastmark():
+	global draw_selected
+	mark_add(ord("'"), draw_selected)
+
 def clip_draw_selected():
 	global draw_selected, mpd_playlist
 	if draw_selected >= len(mpd_playlist):
@@ -853,10 +858,10 @@ def keys():
 		elif ch == ord('q'):      return False
 		elif ch == ord('j'):      view_inc(1)
 		elif ch == ord('k'):      view_dec(1)
-		elif ch == ctrl_and('d'): view_set(draw_selected + maxy / 2)
-		elif ch == ctrl_and('u'): view_set(draw_selected - maxy / 2)
-		elif ch == ctrl_and('f'): view_set(draw_selected + maxy)
-		elif ch == ctrl_and('b'): view_set(draw_selected - maxy)
+		elif ch == ctrl_and('d'): lastmark(); view_set(draw_selected + maxy / 2)
+		elif ch == ctrl_and('u'): lastmark(); view_set(draw_selected - maxy / 2)
+		elif ch == ctrl_and('f'): lastmark(); view_set(draw_selected + maxy)
+		elif ch == ctrl_and('b'): lastmark(); view_set(draw_selected - maxy)
 		elif ch == ctrl_and('e'): view_scroll(+1)
 		elif ch == ctrl_and('y'): view_scroll(-1)
 
@@ -864,6 +869,7 @@ def keys():
 			ch = getchar(0)
 
 			if ch == ord('g'):
+				lastmark()
 				view_set(0)
 			elif ch == ord('s'):
 				seek()
@@ -893,15 +899,20 @@ def keys():
 		elif ch == ord('i'):
 			info(mpd_playlist[draw_selected])
 
-		elif ch == ord('G'):      view_set(len(mpd_playlist) - 1)
+		elif ch == ord('G'):
+			lastmark()
+			view_set(len(mpd_playlist) - 1)
 
 		elif ch == ord('H'):
+			lastmark()
 			draw_selected = draw_top + SCROLL_OFF
 			clip_draw_selected()
 		elif ch == ord('L'):
+			lastmark()
 			draw_selected = draw_top + maxy - SCROLL_OFF - 2 # 2 for the status bars
 			clip_draw_selected()
 		elif ch == ord('M'):
+			lastmark()
 			draw_selected = draw_top + maxy / 2 - 1 # for status bar
 			clip_draw_selected()
 
@@ -977,13 +988,17 @@ def keys():
 				search_rev = 0 if ch == ord('/') else 1
 				go = getsearch(search_rev)
 
+			lastmark()
+
 			if go:
 				order_adj = search_rev
 				if ch == ord('N'):
 					order_adj = 1 if order_adj == 0 else 0
 				dosearch(order_adj)
 
-		elif ch == ord('o'):  view_current()
+		elif ch == ord('o'):
+			lastmark()
+			view_current()
 
 		elif ch == ord('P'):
 			password()
