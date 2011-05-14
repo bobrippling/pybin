@@ -339,11 +339,13 @@ def playlist_save():
 		mpd_playlist_save(name)
 		status('saved as %s' % name)
 	except MPDException as e:
-		ret = prompt('playlist "%s" exists, overwrite? (y/n): ' % name)
-		if ret == 'y':
+		status('playlist "%s" exists, overwrite? (y/n): ' % name)
+		if confirm():
 			mpd_playlist_del(name)
 			mpd_playlist_save(name)
 			status('overwrote playlist %s' % name)
+		else:
+			status('playlist unsaved')
 
 def playlist_load():
 	global stdscr
