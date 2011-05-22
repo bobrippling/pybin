@@ -8,9 +8,10 @@ import time
 import string
 import select
 
-# TODO: ability to change the playlist - add+remove songs/select playlist
-#       output control
-#       get the time working again... duh
+# TODO:  ability to change the playlist - add+remove songs/select playlist
+#        output control
+#        get the time working again... duh
+# FIXME: optimise playlist dragging at startup
 
 # const
 SCROLL_OFF     = 5
@@ -139,6 +140,7 @@ def mpd_close():
 
 def mpd_raw(cmd):
 	global sock
+	trace('sock.send("%s\\n")' % cmd)
 	sock.send(cmd + '\n')
 
 def mpd_readlines(prevcmd):
@@ -564,6 +566,9 @@ def prompt(str, pw = 0):
 		elif c == 127 or c == 263 or c == ord('\b'):
 			if len(ret):
 				ret = ret[:len(ret)-1]
+			else:
+				ret = ''
+				break
 
 		elif chrd in string.printable:
 			ret += chrd
