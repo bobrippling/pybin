@@ -937,17 +937,14 @@ def keys():
 				status("nothing selected")
 
 			if go:
-				try:
-					if os.fork() == 0:
-						sys.stdout.close()
-						sys.stderr.close()
-						os.close(1)
-						os.close(2)
-						os.execvp('mpc_queue.pl', ['-f', nam])
-						sys.exit(-1)
-				except:
-					raise
-				status("queued %s" % nam)
+				curses.endwin()
+				ret = os.system("mpc_queue.pl -f '%s'" % nam) # FIXME: escape '
+				if ret:
+					print "queue error, any key to continue..."
+					sys.stdin.readline()
+				stdscr.refresh()
+				if ret == 0:
+					status("queued %s" % nam)
 
 		elif ch == ord('>'):  mpd_next()
 		elif ch == ord('<'):  mpd_prev()
