@@ -331,6 +331,24 @@ def mpd_playlist_save(name):
 def mpd_playlist_del(name):
 	mpd_noreply('rm "%s"' % name)
 
+def mpd_queue(nam):
+	curses.endwin()
+	def shell_escape(s):
+		#return re.sub("(['$`])", r'\\\1', s)
+		s = re.sub("'", """
+'"'"'
+""", s)
+		return re.sub('&[[]]', '.', s)
+
+	ret = os.system("mpc_queue.pl -f '%s'" % shell_escape(nam))
+	if ret:
+		print "queue error, any key to continue..."
+		sys.stdout.flush()
+		sys.stdin.readline()
+	stdscr.refresh()
+	if ret == 0:
+		status("queued %s" % nam)
+
 def playlist_save():
 	global stdscr
 	name = prompt('save playlist as: ')
@@ -846,7 +864,6 @@ def clip_draw_selected():
 	if draw_selected < 0:
 		draw_selected = 0
 
-
 def keys():
 	global draw_selected, draw_top, stdscr, search_rev
 	global mpd_current, mpd_playlist
@@ -937,14 +954,7 @@ def keys():
 				status("nothing selected")
 
 			if go:
-				curses.endwin()
-				ret = os.system("mpc_queue.pl -f '%s'" % nam) # FIXME: escape '
-				if ret:
-					print "queue error, any key to continue..."
-					sys.stdin.readline()
-				stdscr.refresh()
-				if ret == 0:
-					status("queued %s" % nam)
+				mpd_queue(nam)
 
 		elif ch == ord('>'):  mpd_next()
 		elif ch == ord('<'):  mpd_prev()
