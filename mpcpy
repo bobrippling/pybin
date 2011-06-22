@@ -748,8 +748,12 @@ def scroll_output(initial_y, x, lines):
 		stdscr.addstr(y, x, l[:w - 4])
 		y += 1
 		if y >= h:
-			stdscr.addstr(y, x, 'Any key for next page...')
-			getchar(0)
+			stdscr.addstr(y, x, 'Return for next page...', curses.A_BOLD | curses.color_pair(curses.COLOR_RED))
+
+			while True:
+				ch = getchar(0)
+				if ch == ord('\n'):
+					break
 			stdscr.clear()
 			y = initial_y
 
