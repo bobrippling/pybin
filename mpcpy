@@ -331,23 +331,17 @@ def mpd_playlist_save(name):
 def mpd_playlist_del(name):
 	mpd_noreply('rm "%s"' % name)
 
-def mpd_queue(nam):
+def mpd_queue(ent):
 	curses.endwin()
-	def shell_escape(s):
-		#return re.sub("(['$`])", r'\\\1', s)
-		s = re.sub("'", """
-'"'"'
-""", s)
-		return re.sub('&[[]]', '.', s)
 
-	ret = os.system("mpc_queue.pl -f '%s'" % shell_escape(nam))
+	ret = os.system("mpc_queue.pl -%s" % ent['Pos'])
 	if ret:
 		print "queue error, any key to continue..."
 		sys.stdout.flush()
 		sys.stdin.readline()
 	stdscr.refresh()
 	if ret == 0:
-		status("queued %s" % nam)
+		status("queued %s" % ent['Title'])
 
 def playlist_save():
 	global stdscr
@@ -718,7 +712,7 @@ def info(current):
 	window(x - 1, y - 1, w, h/2,
 			curses.A_BOLD | curses.color_pair(curses.COLOR_MAGENTA))
 
-	attr = [ 'file', 'Title', 'Artist', 'Album', 'Time', 'Track', 'Genre' ]
+	attr = [ 'file', 'Title', 'Artist', 'Album', 'Time', 'Track', 'Genre', 'Pos', 'Id' ]
 
 	i = 0
 	for a in attr:
@@ -952,13 +946,13 @@ def keys():
 		elif ch == ord('Q'):
 			go = False
 			try:
-				nam = mpd_playlist[draw_selected]['Title']
+				which = mpd_playlist[draw_selected]
 				go = True
 			except:
 				status("nothing selected")
 
 			if go:
-				mpd_queue(nam)
+				mpd_queue(which) # allow mpd exceptions to be thrown
 
 		elif ch == ord('>'):  mpd_next()
 		elif ch == ord('<'):  mpd_prev()
