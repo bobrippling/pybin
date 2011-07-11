@@ -7,11 +7,10 @@ import re
 import time
 import string
 import select
+import thread
 
-# TODO:  ability to change the playlist - add+remove songs/select playlist
-#        output control
-#        get the time working again... duh
-# FIXME: optimise playlist dragging at startup
+# TODO:  output control
+# FIXME: optimise playlist lagging at startup
 
 # const
 SCROLL_OFF     = 5
@@ -48,6 +47,12 @@ search_str     = ''
 search_rev     = 1
 
 marks          = {}
+
+thread_die       = False
+# true when thread(s) should exit
+thread_statusdict_lock = None
+thread_can_draw  = True
+
 
 def dump_list(pre, l):
 	for i in l:
@@ -192,11 +197,16 @@ def list_to_map(lst):
 
 def mpd_getstate():
 	global mpd_statusdict
+
+	thread_statusdict_lock.acquire()
+
 	mpd_statusdict = list_to_map(mpd_cmd("status"))
 	if 'state' not in mpd_statusdict.keys():
 		mpd_statusdict['state'] = 'stop'
 	for k in ['random', 'repeat', 'consume', 'xfade', 'single']:
 		mpd_statusdict[k] = int(mpd_statusdict[k])
+
+	thread_statusdict_lock.release()
 
 def mpd_getplaying():
 	global mpd_current
@@ -234,6 +244,7 @@ def mpd_getplaylist():
 def mpd_updateplaylist():
 	global mpd_statusdict, mpd_playlist
 
+	# don't acquire the lock, reading only
 	oldpl = mpd_statusdict['playlist'] # id
 	changes = mpd_cmd('plchanges %s' % oldpl)
 	mpd_getstate()
@@ -334,7 +345,7 @@ def mpd_playlist_del(name):
 def mpd_queue(ent):
 	curses.endwin()
 
-	ret = os.system("mpc_queue.pl -%s" % ent['Pos'])
+	ret = os.system("mpc_queue.pl -f -%s" % ent['Pos'])
 	if ret:
 		print "queue error, any key to continue..."
 		sys.stdout.flush()
@@ -364,10 +375,13 @@ def playlist_save():
 def playlist_load():
 	global stdscr
 
+	thread_can_draw = False
 	stdscr.clear()
 	scroll_output(3, 0, mpd_playlists_get())
 
 	name = prompt('playlist: ')
+	thread_can_draw = False
+
 	if name is None:
 		return
 
@@ -387,43 +401,87 @@ def playlist_remove_current():
 	mpd_playlist = mpd_getplaylist()
 
 # ----------------------------------------------------
+# thread code (specifically timers)
+
+def thread_counter(tid, lock):
+	def showtime(t):
+		draw_status(t)
+
+	def mpd_current_pos():
+		try:
+			return mpd_current['Pos']
+		except:
+			return -1
+
+	t = 0
+	cur_idx = mpd_current_pos()
+
+	while not thread_die:
+		showtime(t)
+		time.sleep(1)
+		t += 1
+		idx = mpd_current_pos()
+		if idx != cur_idx:
+			# new song
+			cur_idx = idx
+			t = 1
+
+
+# ----------------------------------------------------
 # ncurses code
 
+def draw_status(time_extra = 0):
+	global stdscr, mpd_statusdict
+
+	thread_statusdict_lock.acquire()
+
+	try:
+		def statusstr():
+			return "[%s%s%s%s%s]" % (
+					'r' if mpd_statusdict['repeat' ] > 0 else '-',
+					'z' if mpd_statusdict['random' ] > 0 else '-',
+					'y' if mpd_statusdict['single' ] > 0 else '-',
+					'x' if mpd_statusdict['xfade'  ] > 0 else '-',
+					'c' if mpd_statusdict['consume'] > 0 else '-')
+
+
+		if 'Title' in mpd_current.keys():
+			current_song = mpd_current['Title']
+		elif 'file' in mpd_current.keys():
+			current_song = mpd_current['file']
+		else:
+			current_song = "<unknown>"
+
+		if 'time' in mpd_statusdict.keys():
+			play_time = mpd_statusdict['time']
+		else:
+			play_time = '00:00'
+
+		times = play_time.split(':')
+		time_now = int(times[0]) + time_extra
+		time_fin = int(times[1])
+
+		stdscr.move(0, 0)
+		stdscr.clrtoeol()
+
+		stdscr.addstr("%s showing %d/%d, %s: %s %s/%s" % (
+			statusstr(),
+			draw_selected + 1, len(mpd_playlist),
+			mpd_statusdict['state'], current_song, mpd_time(time_now), mpd_time(time_fin)))
+
+		stdscr.move(0, 0)
+		stdscr.refresh()
+	except:
+		pass
+
+	thread_statusdict_lock.release()
+
+
 def draw():
-	global stdscr, mpd_playlist, mpd_statusdict, mpd_current
+	global stdscr, mpd_playlist, mpd_current
 	global draw_top, draw_selected
 
-	def statusstr():
-		return "[%s%s%s%s%s]" % (
-				'r' if mpd_statusdict['repeat' ] > 0 else '-',
-				'z' if mpd_statusdict['random' ] > 0 else '-',
-				'y' if mpd_statusdict['single' ] > 0 else '-',
-				'x' if mpd_statusdict['xfade'  ] > 0 else '-',
-				'c' if mpd_statusdict['consume'] > 0 else '-')
-
-
-	if 'Title' in mpd_current.keys():
-		current_song = mpd_current['Title']
-	elif 'file' in mpd_current.keys():
-		current_song = mpd_current['file']
-	else:
-		current_song = "<unknown>"
-
-	time_now = 0
-	time_fin = 0
-	if 'time' in mpd_statusdict.keys():
-		song_time = mpd_statusdict['time']
-		times = song_time.split(':')
-		time_now = times[0]
-		time_fin = times[1]
-
-	stdscr.move(0, 0)
-	stdscr.clrtoeol()
-
-	stdscr.addstr("%s showing %d/%d, %s: %s %s/%s" % (
-		statusstr(),
-		draw_selected + 1, len(mpd_playlist),
-		mpd_statusdict['state'], current_song, mpd_time(time_now), mpd_time(time_fin)))
+	#draw_status()
 
 	maxen = stdscr.getmaxyx()
 	maxy  = maxen[0]
@@ -814,10 +872,12 @@ def help():
 
 	global stdscr
 
+	thread_can_draw = False
 	stdscr.clear()
 	scroll_output(0, 0, map(lambda x: "%s:\t\t%s" % (x, helps[x]), sorted(helps.keys())))
 	getchar(0)
 	stdscr.clear()
+	thread_can_draw = True
 
 
 def view_scroll(inc):
@@ -1144,6 +1204,11 @@ except Exception as e:
 
 printme = ''
 lastexception = None
+
+trace("starting timer thread")
+thread_statusdict_lock = thread.allocate_lock()
+thread.start_new_thread(thread_counter, (0, thread_statusdict_lock))
+
 try:
 	mpd_connect()
 	mpd_playlist = mpd_getplaylist()
@@ -1154,7 +1219,6 @@ try:
 	view_current()
 
 	trace("calling run()")
-
 	run()
 except MPDException as e:
 	printme = "MPDException: %s" % e
@@ -1164,6 +1228,8 @@ except curses.error:
 	printme = "mpcpy needs more columns on the terminal"
 except Exception as e:
 	lastexception = e
+
+thread_die = True
 
 try:
 	curses.nocbreak()
