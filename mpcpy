@@ -419,12 +419,13 @@ def thread_counter(tid, lock):
 	while not thread_die:
 		showtime(t)
 		time.sleep(1)
-		t += 1
-		idx = mpd_current_pos()
-		if idx != cur_idx:
-			# new song
-			cur_idx = idx
-			t = 1
+		if 'state' in mpd_statusdict.keys() and mpd_statusdict['state'] == 'play':
+			t += 1
+			idx = mpd_current_pos()
+			if idx != cur_idx:
+				# new song
+				cur_idx = idx
+				t = 1
 
 
 # ----------------------------------------------------
