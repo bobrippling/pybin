@@ -404,9 +404,6 @@ def playlist_remove_current():
 # thread code (specifically timers)
 
 def thread_counter(tid, lock):
-	def showtime(t):
-		draw_status(t)
-
 	def mpd_current_pos():
 		try:
 			return mpd_current['Pos']
@@ -417,7 +414,7 @@ def thread_counter(tid, lock):
 	cur_idx = mpd_current_pos()
 
 	while not thread_die:
-		showtime(t)
+		draw_status(t)
 		time.sleep(1)
 		if 'state' in mpd_statusdict.keys() and mpd_statusdict['state'] == 'play':
 			t += 1
@@ -446,6 +443,8 @@ def draw_status(time_extra = 0):
 					'c' if mpd_statusdict['consume'] > 0 else '-')
 
 
+		oldyx = stdscr.getyx()
+
 		if 'Title' in mpd_current.keys():
 			current_song = mpd_current['Title']
 		elif 'file' in mpd_current.keys():
@@ -470,7 +469,7 @@ def draw_status(time_extra = 0):
 			draw_selected + 1, len(mpd_playlist),
 			mpd_statusdict['state'], current_song, mpd_time(time_now), mpd_time(time_fin)))
 
-		stdscr.move(0, 0)
+		stdscr.move(oldyx[0], oldyx[1])
 		stdscr.refresh()
 	except:
 		pass
