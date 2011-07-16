@@ -377,6 +377,7 @@ def playlist_save():
 
 def playlist_load():
 	global stdscr
+	global thread_can_draw
 
 	thread_can_draw = False
 	stdscr.clear()
@@ -417,7 +418,9 @@ def thread_counter(tid, lock):
 	cur_idx = mpd_current_pos()
 
 	while not thread_die:
-		draw_status(t)
+		global thread_can_draw
+		if thread_can_draw:
+			draw_status(t)
 		time.sleep(1)
 		if 'state' in mpd_statusdict.keys() and mpd_statusdict['state'] == 'play':
 			t += 1
@@ -872,13 +875,15 @@ def help():
 	}
 
 	global stdscr
+	#global thread_can_draw
 
-	thread_can_draw = False
+	#thread_can_draw = False
 	stdscr.clear()
-	scroll_output(0, 0, map(lambda x: "%s:\t\t%s" % (x, helps[x]), sorted(helps.keys())))
+	scroll_output(2, 0, map(lambda x: "%s:\t\t%s" % (x, helps[x]), sorted(helps.keys())))
+	status('any key to continue')
 	getchar(0)
 	stdscr.clear()
-	thread_can_draw = True
+	#thread_can_draw = True
 
 
 def view_scroll(inc):
