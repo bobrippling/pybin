@@ -1073,8 +1073,6 @@ def handle_idle():
 		# subscription
 		# message
 
-		print >>sys.stderr, 'idle line: %s' % l
-
 		if l.find('changed: ') == 0:
 			l = l[9:]
 
