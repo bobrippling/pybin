@@ -44,6 +44,7 @@ mpd_port       = 0
 mpd_track_time            = 0
 mpd_track_time_last_check = 0
 mpd_track_changed         = False
+select_delay              = 0
 
 search_regex   = None
 search_str     = ''
@@ -1103,6 +1104,8 @@ def update_time():
 
 	now = time.time()
 	if now - mpd_track_time_last_check > 1:
+		global select_delay
+		select_delay = 1
 		mpd_track_time_last_check = now
 		if 'state' in mpd_statusdict.keys() and mpd_statusdict['state'] == 'play':
 			mpd_track_time += 1
@@ -1117,7 +1120,8 @@ def input_wait():
 
 	while True:
 		try:
-			ready = select.select([sock, sys.stdin], [], [], 1)
+			global select_delay
+			ready = select.select([sock, sys.stdin], [], [], select_delay)
 			break
 		except Exception as (errno, strerr):
 			if errno != 4: # interrupted syscall
