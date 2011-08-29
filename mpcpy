@@ -8,6 +8,8 @@ import time
 import string
 import select
 
+from BufRead import BufRead
+
 # TODO:  output control
 # FIXME: optimise playlist lagging at startup
 
@@ -30,7 +32,7 @@ draw_top = 0
 draw_playing = -1
 
 #  socket
-sock = -1
+bufsock = None
 
 # memory
 mpd_statusdict = {}
@@ -87,7 +89,7 @@ def hoststr():
 	return "%s:%s" % (mpd_host, mpd_port)
 
 def mpd_connect():
-	global sock, mpd_host, mpd_port
+	global bufsock, mpd_host, mpd_port
 	import os
 
 	sock = socket.socket()
@@ -110,7 +112,9 @@ def mpd_connect():
 	except ValueError as e:
 		raise MPDException("Couldn't parse port (%s): %s" % (port, e))
 
-	s    = sock.recv(512)
+	bufsock = BufRead(sock)
+
+	s    = bufsock.readLine()
 	data = s.split()
 
 	if len(data) != 3 or not (data[0] == 'OK' and data[1] == 'MPD'):
@@ -138,45 +142,34 @@ def mpd_connect():
 
 
 def mpd_close():
-	global sock
-	sock.close()
+	global bufsock
+	bufsock.close()
 
 def mpd_raw(cmd):
-	global sock
-	trace('sock.send("%s\\n")' % cmd)
-	sock.send(cmd + '\n')
+	global bufsock
+	trace('bufsock.send("%s\\n")' % cmd)
+	bufsock.send(cmd + '\n')
 
 def mpd_readlines(prevcmd):
 	lines = []
-	saved = ''
+
 	while True:
-		got = sock.recv(4096, socket.MSG_PEEK)
+		got = bufsock.readLine()
 
 		if len(got) == 0:
 			raise MPDException("mpd connection closed")
 
-		lastnl = got.rfind('\n')
-		if lastnl == -1:
-			if len(got) == 4096:
-				raise MPDException('No newline found in server message')
-			time.sleep(0.5)
-			continue
+		if got == 'OK':
+			return lines
+		elif got[:3] == 'ACK':
+			if prevcmd.find('password') == 0:
+				extra = ''
+			else:
+				extra = ' (from "%s")' % prevcmd
+			raise MPDException("MPD error: %s%s" % (last, extra))
 
-		got = filter(len, sock.recv(lastnl + 1).split('\n'))
+		lines.append(got)
 
-		if len(got):
-			lines.extend(got)
-
-			last = lines[len(lines)-1]
-			if last == 'OK':
-				ret = lines[:len(lines)-1] # all but "OK"
-				return ret
-			elif last[:3] == 'ACK':
-				if prevcmd.find('password') == 0:
-					extra = ''
-				else:
-					extra = ' (from "%s")' % prevcmd
-				raise MPDException("MPD error: %s%s" % (last, extra))
 
 def mpd_cmd(cmd):
 	"""Send 'cmd' to mpd, and read lines until we get an 'OK'"""
@@ -233,9 +226,8 @@ def mpd_parseplaylist(data):
 	return ret
 
 def mpd_getplaylist():
-	data = mpd_cmd("playlistinfo")
-
-	return mpd_parseplaylist(data) # [ { 'file' : 'tim.mp3', 'Id' : 5 }, { 'file' : 'bob.mp3', 'Id' : 3 } ]
+	return mpd_parseplaylist(mpd_cmd("playlistinfo"))
+	# [ { 'file' : 'tim.mp3', 'Id' : 5 }, { 'file' : 'bob.mp3', 'Id' : 3 } ]
 
 
 def mpd_updateplaylist():
@@ -407,6 +399,9 @@ def playlist_remove_current():
 def draw_status(time_extra = 0):
 	global stdscr, mpd_statusdict
 
+	global select_delay
+	select_delay = 1
+
 	try:
 		def statusstr():
 			return "[%s%s%s%s%s]" % (
@@ -517,10 +512,12 @@ def draw():
 	stdscr.move(0, 0)
 
 
-def status(s):
+def status(s, update = False):
 	stdscr.move(1, 0)
 	stdscr.clrtoeol()
 	stdscr.addstr(s)
+	if update:
+		stdscr.refresh();
 
 def set_draw_top(n):
 	global draw_top
@@ -1104,8 +1101,6 @@ def update_time():
 
 	now = time.time()
 	if now - mpd_track_time_last_check > 1:
-		global select_delay
-		select_delay = 1
 		mpd_track_time_last_check = now
 		if 'state' in mpd_statusdict.keys() and mpd_statusdict['state'] == 'play':
 			mpd_track_time += 1
@@ -1114,22 +1109,23 @@ def update_time():
 				mpd_track_time = 0
 
 def input_wait():
-	global sock
+	global bufsock
 
 	mpd_idle(True)
 
 	while True:
 		try:
 			global select_delay
-			ready = select.select([sock, sys.stdin], [], [], select_delay)
+			ready = select.select([bufsock, sys.stdin], [], [], select_delay)
 			break
 		except Exception as (errno, strerr):
 			if errno != 4: # interrupted syscall
+				print >>sys.stderr, "select error: %d, %s" % (errno, strerr)
 				raise
 
-	# ready = ([sock?, sys.stdin?], [], [])
+	# ready = ([bufsock?, sys.stdin?], [], [])
 
-	if sock in ready[0]:
+	if bufsock in ready[0]:
 		handle_idle()
 	else:
 		mpd_idle(False)
@@ -1195,8 +1191,6 @@ try:
 	curses.cbreak()
 	curses.noecho()
 	stdscr.keypad(1)
-	status('Connecting...')
-	stdscr.refresh();
 except Exception as e:
 	print "Couldn't start ncurses: %s" % e
 	sys.exit(1)
@@ -1205,9 +1199,13 @@ printme = ''
 lastexception = None
 
 try:
+	status('Connecting...', True)
 	mpd_connect()
+
+	status('Getting playlist...', True)
 	mpd_playlist = mpd_getplaylist()
 
+	status('Getting state...', True)
 	mpd_getstate()
 	mpd_getplaying()
 
