@@ -166,7 +166,7 @@ def mpd_readlines(prevcmd):
 				extra = ''
 			else:
 				extra = ' (from "%s")' % prevcmd
-			raise MPDException("MPD error: %s%s" % (last, extra))
+			raise MPDException("MPD error: %s%s" % (got, extra))
 
 		lines.append(got)
 

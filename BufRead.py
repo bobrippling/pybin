@@ -48,6 +48,7 @@ class BufRead:
 
 		nl = self.buf.find('\n')
 		if nl == -1:
+			# FIXME: wait a bit and have a few tries
 			raise BufReadException("No Newline")
 		return self.bufLine(nl)
 
