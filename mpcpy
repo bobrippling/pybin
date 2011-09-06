@@ -1102,10 +1102,13 @@ def update_time():
 	now = time.time()
 	if now - mpd_track_time_last_check > 1:
 		mpd_track_time_last_check = now
-		if 'state' in mpd_statusdict.keys() and mpd_statusdict['state'] == 'play':
-			mpd_track_time += 1
-			if mpd_track_changed:
-				mpd_track_changed = False
+		if 'state' in mpd_statusdict.keys():
+			if mpd_statusdict['state'] == 'play':
+				mpd_track_time += 1
+				if mpd_track_changed:
+					mpd_track_changed = False
+					mpd_track_time = 0
+			elif mpd_statusdict['state'] == 'stop':
 				mpd_track_time = 0
 
 def input_wait():
