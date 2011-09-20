@@ -943,6 +943,13 @@ def keys():
 			ch = getchar(0)
 			mark_add(ch, draw_selected)
 
+			s = '%d' % draw_selected
+			try:
+				s = mpd_playlist[draw_selected]['Title']
+			except:
+				pass
+			status("marked: %c => %s" % (ch, s))
+
 		elif ch == ord('i'):
 			info(mpd_playlist[draw_selected])
 
