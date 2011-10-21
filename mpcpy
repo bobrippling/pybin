@@ -565,12 +565,17 @@ def view_set(n):
 		n = len(mpd_playlist) - 1
 
 	draw_selected = n
-	set_draw_top(draw_selected - maxy / 2)
 
-	if draw_top > len(mpd_playlist) - maxy:
-		set_draw_top(len(mpd_playlist) - maxy)
-	if draw_top < 0:
-		set_draw_top(0)
+	if n < draw_top or n > draw_top + stdscr.getmaxyx()[0] - 3:
+		dtop = draw_selected - maxy / 2
+
+		if dtop > len(mpd_playlist) - maxy:
+			dtop = len(mpd_playlist) - maxy
+		if dtop < 0:
+			dtop = 0
+
+		set_draw_top(dtop)
+
 
 def view_current():
 	global mpd_current
