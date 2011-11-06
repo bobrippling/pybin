@@ -292,6 +292,20 @@ def mpd_single():     global mpd_statusdict; mpd_noreply("single %d"    % (1-mpd
 def mpd_password(pw): mpd_noreply('password "%s"' % pw)
 def mpd_move(a, b):   mpd_noreply('move "%s" "%s"' % (a, b))
 
+def mpd_update():
+	ret = mpd_cmd('update')
+	try:
+		if len(ret) != 1:
+			raise
+		parts = ret[0].split(' ')
+		if len(parts) == 2 and parts[0] == 'updating_db:':
+			int(parts[1])
+		else:
+			raise
+		status("mpd updating...")
+	except:
+		raise MPDException("Invalid MPD update reply: %s" % ret)
+
 def mpd_crossfade(n = -1):
 	global mpd_statusdict, mpd_xfade
 
@@ -337,7 +351,11 @@ def mpd_queue(ent):
 	ret = os.system("mpc_queue.pl -f -%s" % ent['Pos'])
 	stdscr.refresh()
 	if ret == 0:
-		status("queued %s" % ent['Title'])
+		try:
+			t = ent['Title']
+		except:
+			t = 'track %s' % ent['Pos']
+		status("queued %s" % t)
 	else:
 		status("queue error!")
 
@@ -1052,6 +1070,9 @@ def keys():
 		elif ch == ord('P'):
 			password()
 
+		elif ch == ord('u'):
+			mpd_update()
+
 		elif ch == 410 or ch == 12:
 			# 12 = "\f" = ctrl+L
 			status('')
@@ -1099,6 +1120,8 @@ def handle_idle():
 				# play, pause, etc
 				mpd_getstate()
 				mpd_getplaying()
+			elif l == 'update':
+				status("mpd update complete")
 
 			if old_idx != mpd_current_pos():
 				global mpd_track_changed
