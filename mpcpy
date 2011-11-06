@@ -351,7 +351,11 @@ def mpd_queue(ent):
 	ret = os.system("mpc_queue.pl -f -%s" % ent['Pos'])
 	stdscr.refresh()
 	if ret == 0:
-		status("queued %s" % ent['Title'])
+		try:
+			t = ent['Title']
+		except:
+			t = 'track %s' % ent['Pos']
+		status("queued %s" % t)
 	else:
 		status("queue error!")
 
