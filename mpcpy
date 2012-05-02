@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/env python2.6
 
 import curses
 import socket
@@ -53,6 +53,9 @@ search_str     = ''
 search_rev     = 1
 
 marks          = {}
+
+def ctrl_and(n):
+	return ord(n) - ord('a') + 1
 
 def dump_list(pre, l):
 	for i in l:
@@ -388,10 +391,12 @@ def mpd_current_pos():
 def playlist_load():
 	global stdscr
 
-	stdscr.clear()
-	scroll_output(3, 0, mpd_playlists_get())
+	playlists = mpd_playlists_get()
 
-	name = prompt('playlist: ')
+	stdscr.clear()
+	scroll_output(3, 0, playlists)
+
+	name = prompt('playlist: ', autocomplete = playlists)
 
 	if name is None:
 		return
@@ -599,7 +604,38 @@ def view_current():
 	global mpd_current
 	view_set(mpd_current['Pos'])
 
-def prompt(str, pw = 0):
+def autocomplete_do(all, str):
+	min_len = 999
+	str_len = len(str)
+	chosen = []
+
+	for i in all:
+		if i[:str_len] == str:
+			chosen.append(i)
+
+	if len(chosen) == 1:
+		return chosen[0]
+
+	i = str_len
+	try:
+		lengthening = True
+		while lengthening:
+			ch = chosen[0][i + 1]
+
+			for j in chosen:
+				if j[i + 1] != ch:
+					lengthening = False
+					break
+
+			if lengthening:
+				i += 1
+	except:
+		pass # hit the end of one
+
+	return chosen[0][:i]
+
+
+def prompt(str, pw = 0, autocomplete = []):
 	global stdscr
 
 	status(str)
@@ -621,9 +657,17 @@ def prompt(str, pw = 0):
 		if c == ord('\n'):
 			break
 
+		elif c == ord('\t') and len(autocomplete):
+			autoed = autocomplete_do(autocomplete, ret)
+			if autoed != None:
+				ret = autoed
+
 		elif c == 033 or c == 31:
 			ret = ''
 			break
+
+		elif c == ctrl_and('u'):
+			ret = ''
 
 		elif c == 127 or c == 263 or c == ord('\b'):
 			if len(ret):
@@ -712,7 +756,7 @@ def seek():
 	mpd_seek(pos) # outside the try:, so mpd errors are thrown back
 
 def password():
-	pw = prompt('password: ', 1)
+	pw = prompt('password: ', pw = 1)
 	if pw == None:
 		return
 	status('password accepted')
@@ -764,7 +808,8 @@ def info(current):
 
 	attr = [ 'file', 'Title', 'Artist', 'Album', 'Time', 'Track', 'Genre', 'Pos', 'Id' ]
 
-	i = 0
+	x += 1
+	i = 1
 	for a in attr:
 		try:
 			val = current[a]
@@ -914,9 +959,6 @@ def keys():
 	global draw_selected, draw_top, stdscr, search_rev
 	global mpd_current, mpd_playlist
 
-	def ctrl_and(n):
-		return ord(n) - ord('a') + 1
-
 	maxy = stdscr.getmaxyx()[0]
 
 	ch = getchar()
@@ -1044,7 +1086,7 @@ def keys():
 				tmp = mpd_playlist[draw_selected]
 				mpd_playlist[draw_selected] = mpd_playlist[to]
 				mpd_playlist[to] = tmp
-				draw_selected = to
+				view_set(to)
 			else:
 				status("can't move from there")
 
