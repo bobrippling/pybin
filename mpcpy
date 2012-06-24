@@ -632,7 +632,11 @@ def autocomplete_do(all, str):
 	except:
 		pass # hit the end of one
 
-	return chosen[0][:i]
+	try:
+		return chosen[0][:i]
+	except:
+		return str
+
 
 
 def prompt(str, pw = 0, autocomplete = []):
