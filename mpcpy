@@ -391,7 +391,7 @@ def mpd_current_pos():
 def playlist_load():
 	global stdscr
 
-	playlists = mpd_playlists_get()
+	playlists = sorted(mpd_playlists_get())
 
 	stdscr.clear()
 	scroll_output(3, 0, playlists)
