@@ -128,7 +128,9 @@ def mpd_connect():
 		raise MPDException("Invalid version string from mpd: %s" % data[2])
 
 	try:
-		if int(vers[0]) != 0 or int(vers[1]) != 16: # or int(vers[2]) != 0:
+		if int(vers[0]) != 0 \
+		or int(vers[1]) < 16\
+		or int(vers[1]) > 19: # or int(vers[2]) != 0:
 			global stdscr
 
 			stdscr.addstr("MPD (%s) version: %s, continue? (Y/n) " %
@@ -199,7 +201,10 @@ def mpd_getstate():
 	if 'state' not in mpd_statusdict.keys():
 		mpd_statusdict['state'] = 'stop'
 	for k in ['random', 'repeat', 'consume', 'xfade', 'single']:
-		mpd_statusdict[k] = int(mpd_statusdict[k])
+		try:
+			mpd_statusdict[k] = int(mpd_statusdict[k])
+		except:
+			mpd_statusdict[k] = 0
 
 def mpd_getplaying():
 	global mpd_current
