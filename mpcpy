@@ -135,7 +135,7 @@ def mpd_connect():
 					(hoststr(), data[2]))
 
 			if not confirm():
-				raise MPDException("Invalid MPD version: %s (reply: %d)" % (data[2], ch))
+				raise MPDException("Invalid MPD version: %s" % data[2])
 	except TypeError as e:
 		raise MPDException("Invalid version string from mpd: %s" % data[2])
 
