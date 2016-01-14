@@ -524,12 +524,17 @@ def draw():
 		album  = album[         :int(SPACE_ALBUM  * scale)]
 
 		try:
-			stdscr.addstr("%-*s %-*s %-*s %-*s" % (
-				int(SPACE_TIME   * scale), time,
+			time = "%-*s" % (int(SPACE_TIME   * scale), time)
+
+			formatted_str = "%-*s %-*s %-*s" % (
 				int(SPACE_ARTIST * scale), artist,
 				int(SPACE_TITLE  * scale), title,
-				int(SPACE_ALBUM  * scale), album
-				), attr)
+				int(SPACE_ALBUM  * scale), album)
+
+			if len(formatted_str.replace(' ', '')) == 0:
+				formatted_str = try_key(mpd_playlist[i], 'file', '?')
+
+			stdscr.addstr(time + formatted_str, attr)
 		except Exception:
 			pass
 
