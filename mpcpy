@@ -70,6 +70,9 @@ def trace(s):
 	if TRACING:
 		print >>sys.stderr, "%d: %s" % (time.time(), s)
 
+def try_key(dict, key, default = ''):
+	return dict[key] if key in dict.keys() else default
+
 # ----------------------------------------------------
 # socket/mpd code
 
@@ -508,10 +511,10 @@ def draw():
 			attr = curses.A_NORMAL
 
 
-		time   = mpd_playlist[i]['Time'  ] if  'Time'   in mpd_playlist[i].keys() else '0'
-		artist = mpd_playlist[i]['Artist'] if  'Artist' in mpd_playlist[i].keys() else ''
-		title  = mpd_playlist[i]['Title' ] if  'Title'  in mpd_playlist[i].keys() else ''
-		album  = mpd_playlist[i]['Album' ] if  'Album'  in mpd_playlist[i].keys() else ''
+		time   = try_key(mpd_playlist[i], 'Time', 0)
+		artist = try_key(mpd_playlist[i], 'Artist')
+		title  = try_key(mpd_playlist[i], 'Title')
+		album  = try_key(mpd_playlist[i], 'Album')
 
 		scale = float(maxx) / float(SPACE_TIME + SPACE_ARTIST + SPACE_TITLE + SPACE_ALBUM)
 
