@@ -680,7 +680,7 @@ def prompt(str, pw = 0, autocomplete = []):
 				ret = autoed
 
 		elif c == 033 or c == 31:
-			ret = ''
+			ret = None
 			break
 
 		elif c == ctrl_and('u'):
@@ -690,7 +690,7 @@ def prompt(str, pw = 0, autocomplete = []):
 			if len(ret):
 				ret = ret[:len(ret)-1]
 			else:
-				ret = ''
+				ret = None
 				break
 
 		elif chrd in string.printable:
@@ -701,14 +701,14 @@ def prompt(str, pw = 0, autocomplete = []):
 		stdscr.refresh()
 
 	stdscr.timeout(CURSES_TIMEOUT)
-	return ret if len(ret) else None
+	return ret
 
 
 def getsearch(reverse):
 	global stdscr, search_regex, search_str
 
 	search_str = prompt('?' if reverse else '/')
-	if search_str is None:
+	if search_str is None or len(search_str) == 0:
 		return False
 
 	search_regex = re.compile(".*" + search_str + ".*", re.IGNORECASE)
@@ -761,7 +761,7 @@ def dosearch(reverse):
 
 def seek():
 	spos = prompt('seek to: ')
-	if spos == None:
+	if spos == None or len(spos) == 0:
 		return
 	try:
 		if spos.find(':'):
@@ -782,7 +782,7 @@ def seek():
 
 def password():
 	pw = prompt('password: ', pw = 1)
-	if pw == None:
+	if pw == None or len(pw) == 0:
 		return
 	status('password accepted')
 	mpd_password(pw)
@@ -1086,7 +1086,7 @@ def keys():
 		elif ch == ord('x') or ch == ord('4'):  mpd_crossfade()
 		elif ch == ord('X'):
 			s = prompt('xfade: ')
-			if s != None:
+			if s != None and len(s):
 				good = False
 				try:
 					n = int(s)
