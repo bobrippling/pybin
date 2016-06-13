@@ -980,6 +980,18 @@ def clip_draw_selected():
 	if draw_selected < 0:
 		draw_selected = 0
 
+def shellout():
+	cmd = prompt('!')
+	if cmd is None:
+		return
+	if cmd == '':
+		cmd = os.environ["SHELL"] or "sh"
+	curses.endwin()
+	os.system(cmd)
+	sys.stdout.write("(press RETURN)")
+	while getchar(0) != ord('\n'):
+		pass
+
 def keys():
 	global draw_selected, draw_top, stdscr, search_rev
 	global mpd_current, mpd_playlist
@@ -1001,6 +1013,8 @@ def keys():
 		elif ch == ctrl_and('b'): lastmark(); view_set(draw_selected - maxy)
 		elif ch == ctrl_and('e'): view_scroll(+1)
 		elif ch == ctrl_and('y'): view_scroll(-1)
+
+		elif ch == ord('!'): shellout()
 
 		elif ch == ord('g'):
 			ch = getchar(0)
