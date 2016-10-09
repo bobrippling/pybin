@@ -359,7 +359,7 @@ def mpd_playlist_del(name):
 def mpd_queue(ent):
 	curses.endwin()
 
-	ret = os.system("mpc_queue.pl -f -%s" % ent['Pos'])
+	ret = os.system("mpc-queue -f -%s" % ent['Pos'])
 	stdscr.refresh()
 	if ret == 0:
 		try:
