@@ -111,12 +111,15 @@ def mpd_connect():
 
 	try:
 		port = int(port)
-		mpd_host, mpd_port = host, port
+	except ValueError as e:
+		raise MPDException("Couldn't parse port (%s): %s" % (port, e))
+
+	mpd_host, mpd_port = host, port
+
+	try:
 		sock.connect((host, port))
 	except Exception as e:
 		raise MPDException("Couldn't connect to mpd @ %s - %s" % (hoststr(), e))
-	except ValueError as e:
-		raise MPDException("Couldn't parse port (%s): %s" % (port, e))
 
 	bufsock = BufRead(sock)
 
