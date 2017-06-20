@@ -513,6 +513,8 @@ def draw():
 			# Red
 			# White
 			# Yellow
+		elif mpd_playlist[i]['_selected']:
+			attr = curses.color_pair(curses.COLOR_BLUE)
 		else:
 			attr = curses.A_NORMAL
 
