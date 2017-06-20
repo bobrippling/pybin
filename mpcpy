@@ -135,8 +135,8 @@ def mpd_connect():
 
 	try:
 		if int(vers[0]) != 0 \
-		or int(vers[1]) < 16\
-		or int(vers[1]) > 19: # or int(vers[2]) != 0:
+		or int(vers[1]) < 16 \
+		or int(vers[1]) > 21:
 			global stdscr
 
 			stdscr.addstr("MPD (%s) version: %s, continue? (Y/n) " %
