@@ -225,6 +225,7 @@ def mpd_parseplaylist(data):
 	i = 0
 	while i < len(data):
 		curmap = {}
+		curmap['_selected'] = False
 		while i < len(data):
 			pos = data[i].find(':')
 			if pos == -1:
@@ -258,7 +259,9 @@ def mpd_updateplaylist():
 	for track in changes:
 		for i in range(0, len(mpd_playlist)):
 			if mpd_playlist[i]['Id'] == track['Id']:
+				was_selected = mpd_playlist[i]['_selected']
 				mpd_playlist[i] = track
+				mpd_playlist[i]['_selected'] = was_selected
 				mpd_playlist[i]['Pos'] = int(mpd_playlist[i]['Pos'])
 				break
 
@@ -1131,6 +1134,9 @@ def keys():
 				view_set(to)
 			else:
 				status("can't move from there")
+
+		elif ch == ord(' '):
+				mpd_playlist[draw_selected]['_selected'] ^= 1
 
 		elif ch == ord('/') or ch == ord('?') or ch == ord('n') or ch == ord('N'):
 			go = True
