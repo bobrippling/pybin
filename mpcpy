@@ -1000,6 +1000,17 @@ def shellout():
 	while getchar(0) != ord('\n'):
 		pass
 
+def move_song(pos, up):
+	if pos > 0 if up else pos < len(mpd_playlist)-1:
+		to = pos + (-1 if up else 1)
+		mpd_move(pos, to)
+
+		tmp = mpd_playlist[pos]
+		mpd_playlist[pos] = mpd_playlist[to]
+		mpd_playlist[to] = tmp
+		return True
+	return False
+
 def keys():
 	global draw_selected, draw_top, stdscr, search_rev
 	global mpd_current, mpd_playlist
@@ -1123,19 +1134,26 @@ def keys():
 		elif ch == ord('w') or ch == ord('W'):
 			# shift song up or down one
 			up = ch == ord('W')
+			have_selected = False
 
-			if (draw_selected > 0                   if     up else True) and \
-				 (draw_selected < len(mpd_playlist)-1 if not up else True):
+			for entry in mpd_playlist:
+				if entry['_selected']:
+					have_selected = True
+					break
 
-				to = draw_selected + (-1 if up else 1)
-				mpd_move(draw_selected, to)
+			if have_selected:
+				to_move = map(lambda entry: entry[1], filter(lambda entry: entry[0]['_selected'], zip(mpd_playlist, range(len(mpd_playlist)))))
 
-				tmp = mpd_playlist[draw_selected]
-				mpd_playlist[draw_selected] = mpd_playlist[to]
-				mpd_playlist[to] = tmp
-				view_set(to)
+				if not up:
+					to_move.reverse()
+
+				for entry in to_move:
+					move_song(entry, up)
 			else:
-				status("can't move from there")
+				if move_song(draw_selected, up):
+					view_set(draw_selected + (-1 if up else 1))
+				else:
+					status("can't move from there")
 
 		elif ch == ord(' '):
 				mpd_playlist[draw_selected]['_selected'] ^= 1
