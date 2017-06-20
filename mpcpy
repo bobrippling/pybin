@@ -752,12 +752,12 @@ def dosearch(reverse):
 				status("Found in %s" % w[1])
 				return
 
-        # search filenames
+	# search filenames
 	for trax in [mpd_playlist[i] for i in l]:
-            if search_regex.match(trax['file']):
-                view_set(trax['Pos'])
-                status("Found in filename")
-                return
+		if search_regex.match(trax['file']):
+			view_set(trax['Pos'])
+			status("Found in filename")
+			return
 
 	status("Couldn't find %s" % search_str)
 
