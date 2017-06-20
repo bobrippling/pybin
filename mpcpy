@@ -105,9 +105,9 @@ def mpd_connect():
 	port = os.getenv('MPD_PORT', '6600')
 
 	if host.find("@") != -1:
-		parts = host.split("@")
+		parts = host.split("@", 1)
 		pw = parts[0]
-		host = ''.join(parts[1:])
+		host = parts[1]
 
 	try:
 		port = int(port)
