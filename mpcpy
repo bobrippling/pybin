@@ -1157,6 +1157,8 @@ def keys():
 
 		elif ch == ord(' '):
 				mpd_playlist[draw_selected]['_selected'] ^= 1
+                                draw_selected += 1
+                                clip_draw_selected()
 
 		elif ch == ord('/') or ch == ord('?') or ch == ord('n') or ch == ord('N'):
 			go = True
