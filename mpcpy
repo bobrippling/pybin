@@ -260,12 +260,16 @@ def mpd_updateplaylist():
 		if 'Pos' in track.keys():
 			track['Pos'] = int(track['Pos'])
 
+		found = False
 		for i in range(0, len(mpd_playlist)):
 			if mpd_playlist[i]['Id'] == track['Id']:
 				was_selected = mpd_playlist[i]['_selected']
 				mpd_playlist[i] = track
 				mpd_playlist[i]['_selected'] = was_selected
+				found = True
 				break
+		if not found:
+			mpd_playlist.append(track)
 
 	mpd_playlist = sorted(mpd_playlist, key = lambda tr: int(tr['Pos']))
 
