@@ -257,12 +257,14 @@ def mpd_updateplaylist():
 	changes = mpd_parseplaylist(changes)
 
 	for track in changes:
+		if 'Pos' in track.keys():
+			track['Pos'] = int(track['Pos'])
+
 		for i in range(0, len(mpd_playlist)):
 			if mpd_playlist[i]['Id'] == track['Id']:
 				was_selected = mpd_playlist[i]['_selected']
 				mpd_playlist[i] = track
 				mpd_playlist[i]['_selected'] = was_selected
-				mpd_playlist[i]['Pos'] = int(mpd_playlist[i]['Pos'])
 				break
 
 	mpd_playlist = sorted(mpd_playlist, key = lambda tr: int(tr['Pos']))
