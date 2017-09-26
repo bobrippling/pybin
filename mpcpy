@@ -16,7 +16,6 @@ from BufRead import BufRead
 # const
 SCROLL_OFF     = 5
 CURSES_TIMEOUT = 250
-SLEEP_TIME     = 1
 TRACING        = 0
 
 # relative differences
