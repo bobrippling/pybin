@@ -10,6 +10,138 @@ import select
 
 from BufRead import BufRead
 
+KEY_DEFINITIONS = {
+	'q': lambda self: self.exit(),
+	'j': lambda self: self.view_inc(1),
+	'k': lambda self: self.view_dec(1),
+	ctrl_and('d'): lambda self: self.view_set(draw_selected + maxy / 2)
+	ctrl_and('u'): lambda self: self.view_set(draw_selected - maxy / 2)
+	ctrl_and('f'): lambda self: self.view_set(draw_selected + maxy)
+	ctrl_and('b'): lambda self: self.view_set(draw_selected - maxy)
+	ctrl_and('e'): lambda self: self.view_scroll(+1)
+	ctrl_and('y'): lambda self: self.view_scroll(-1)
+
+	'!': lambda self: self.shellout(),
+
+	'gg': lambda self: self.view_set(0)
+	'gs': lambda self: self.seek()
+	'gS': lambda self: self.playlist_save()
+	'gL': lambda self: self.playlist_load()
+	'gC': lambda self: self.playlist_clear()
+
+	'"': lambda self: self.goto_mark()
+
+	'm': lambda self: self.create_mark()
+
+	'i': lambda self: self.info(self.mpd.playlist[self.draw_selected])
+
+	'G': lambda self: self.view_set(len(self.mpd.playlist) - 1)
+
+	'H': lambda self: self.screen_position(-1)
+	'L': lambda self: self.screen_position(0)
+	'M': lambda self: self.screen_position(+1)
+
+	'd':  lambda self: self.playlist_remove_current()
+	'p':  lambda self: self.mpd.toggle()
+	's':  lambda self: self.mpd.stop()
+	'\n': lambda self: self.mpd.play(self.draw_selected)
+
+	elif ch == ord('Q'):
+		go = False
+		try:
+			which = mpd_playlist[draw_selected]
+			go = True
+		except:
+			status("nothing selected")
+
+		if go:
+			mpd_queue(which) # allow mpd exceptions to be thrown
+
+	elif ch == ord('>'):  mpd_next()
+	elif ch == ord('<'):  mpd_prev()
+
+	elif ch == ord('r') or ch == ord('1'):  mpd_repeat()
+	elif ch == ord('z') or ch == ord('2'):  mpd_random()
+	elif ch == ord('y') or ch == ord('3'):  mpd_single()
+	elif ch == ord('c') or ch == ord('5'):  mpd_consume()
+	elif ch == ord('x') or ch == ord('4'):  mpd_crossfade()
+	elif ch == ord('X'):
+		s = prompt('xfade: ')
+		if s != None and len(s):
+			good = False
+			try:
+				n = int(s)
+				good = True
+			except:
+				status('need number for xfade')
+
+			if good:
+				mpd_crossfade(n)
+				status('xfade set to %d' % mpd_xfade)
+
+	elif ch == ord('w') or ch == ord('W'):
+		# shift song up or down one
+		up = ch == ord('W')
+		have_selected = False
+
+		for entry in mpd_playlist:
+			if entry['_selected']:
+				have_selected = True
+				break
+
+		if have_selected:
+			to_move = map(lambda entry: entry[1], filter(lambda entry: entry[0]['_selected'], zip(mpd_playlist, range(len(mpd_playlist)))))
+
+			if not up:
+				to_move.reverse()
+
+			for entry in to_move:
+				move_song(entry, up)
+		else:
+			if move_song(draw_selected, up):
+				view_set(draw_selected + (-1 if up else 1), False)
+			else:
+				status("can't move from there")
+
+	elif ch == ord(' '):
+			mpd_playlist[draw_selected]['_selected'] ^= 1
+							draw_selected += 1
+							clip_draw_selected()
+
+	elif ch == ord('/') or ch == ord('?') or ch == ord('n') or ch == ord('N'):
+		go = True
+
+		if ch == ord('/') or ch == ord('?'):
+			search_rev = 0 if ch == ord('/') else 1
+			go = getsearch(search_rev)
+
+		lastmark()
+
+		if go:
+			order_adj = search_rev
+			if ch == ord('N'):
+				order_adj = 1 if order_adj == 0 else 0
+			dosearch(order_adj)
+
+	elif ch == ord('o'):
+		lastmark()
+		view_current()
+
+	elif ch == ord('P'):
+		password()
+
+	elif ch == ord('u'):
+		mpd_update()
+
+	elif ch == 410 or ch == 12:
+		# 12 = "\f" = ctrl+L
+		status('')
+		stdscr.refresh()
+
+	elif ch == ord('h'):
+		help()
+}
+
 # TODO:  output control
 # FIXME: optimise playlist lagging at startup
 
@@ -23,15 +155,6 @@ SPACE_TIME     = 2
 SPACE_ARTIST   = 5
 SPACE_TITLE    = 8
 SPACE_ALBUM    = 4
-
-#  ncurses
-stdscr = None
-draw_selected = 0
-draw_top = 0
-draw_playing = -1
-
-#  socket
-bufsock = None
 
 # memory
 mpd_statusdict = {}
@@ -56,65 +179,36 @@ marks          = {}
 def ctrl_and(n):
 	return ord(n) - ord('a') + 1
 
-def dump_list(pre, l):
-	for i in l:
-		sys.stderr.write("%s: %s\n" % (pre, i))
-
-def dump_map(pre, m):
-	for k in m.keys():
-		sys.stderr.write("%s: %s => %s\n" % (pre, k, m[k]))
-
 def trace(s):
 	global TRACING
 	if TRACING:
 		print >>sys.stderr, "%d: %s" % (time.time(), s)
 
-def try_key(dict, key, default = ''):
-	return dict[key] if key in dict.keys() else default
-
 # ----------------------------------------------------
 # socket/mpd code
 
-class mpcpyException(Exception):
+class MpcpyException(Exception):
 	pass
 class MPDException(Exception):
 	pass
 
-def confirm():
-	global stdscr
-
-	ch = getchar(0)
-
-	if ch == ord('\n') or ch == ord('y'):
-		return True
-	return False
-
-def hoststr():
-	global mpd_host, mpd_port
-	return "%s:%s" % (mpd_host, mpd_port)
-
-def mpd_connect():
-	global bufsock, mpd_host, mpd_port
-	import os
-
-	sock = socket.socket()
-	pw = ''
-
+def create_mpd():
 	host = os.getenv('MPD_HOST', 'localhost')
 	port = os.getenv('MPD_PORT', '6600')
-
 	if host.find("@") != -1:
 		parts = host.split("@", 1)
 		pw = parts[0]
 		host = parts[1]
+	else:
+		pw = ''
 
 	try:
 		port = int(port)
 	except ValueError as e:
 		raise MPDException("Couldn't parse port (%s): %s" % (port, e))
 
-	mpd_host, mpd_port = host, port
 
+	sock = socket.socket()
 	try:
 		sock.connect((host, port))
 	except Exception as e:
@@ -122,264 +216,480 @@ def mpd_connect():
 
 	bufsock = BufRead(sock)
 
-	s    = bufsock.readLine()
-	data = s.split()
+	firstline = bufsock.readLine()
+	version_data = firstline.split()
 
-	if len(data) != 3 or not (data[0] == 'OK' and data[1] == 'MPD'):
-		raise MPDException("Invalid string from mpd: %s" % s)
+	if len(version_data) != 3 or version_data[0] != 'OK' or version_data[1] != 'MPD':
+		raise MPDException("Invalid string from mpd: %s" % firstline)
 
-	vers = data[2].split('.')
+	vers = version_data[2].split('.')
 	if len(vers) != 3:
-		raise MPDException("Invalid version string from mpd: %s" % data[2])
+		raise MPDException("Invalid version string from mpd: %s" % version_data[2])
 
 	try:
-		if int(vers[0]) != 0 \
-		or int(vers[1]) < 16 \
-		or int(vers[1]) > 21:
-			global stdscr
+		valid_version = int(vers[0]) == 0 and (16 <= int(vers[1]) and int(vers[1]) <= 21)
 
-			stdscr.addstr("MPD (%s) version: %s, continue? (Y/n) " %
-					(hoststr(), data[2]))
-
-			if not confirm():
-				raise MPDException("Invalid MPD version: %s" % data[2])
+		if not valid_version and not confirm("MPD (%s) version: %s, continue? (Y/n) " % (hoststr(), version_data[2])):
+			raise MPDException("Invalid MPD version: %s" % version_data[2])
 	except TypeError as e:
-		raise MPDException("Invalid version string from mpd: %s" % data[2])
+		raise MPDException("Invalid version string from mpd: %s" % version_data[2])
 
-	if len(pw):
-		mpd_password(pw)
-	# good to go, end of function
+	return Mpd(host, port, pw)
 
 
-def mpd_close():
-	global bufsock
-	bufsock.close()
+class Mpd:
+	def __init__(self, host, port, pw):
+		if len(pw):
+			self.attempt_password(pw)
 
-def mpd_raw(cmd):
-	global bufsock
-	trace('bufsock.send("%s\\n")' % cmd)
-	bufsock.send(cmd + '\n')
-
-def mpd_readlines(prevcmd):
-	lines = []
-
-	while True:
-		got = bufsock.readLine()
-
-		if len(got) == 0:
-			raise MPDException("mpd connection closed")
-
-		if got == 'OK':
-			return lines
-		elif got[:3] == 'ACK':
-			if prevcmd.find('password') == 0:
-				extra = ''
-			else:
-				extra = ' (from "%s")' % prevcmd
-			raise MPDException("MPD error: %s%s" % (got, extra))
-
-		lines.append(got)
+	def hoststr(self):
+		return "%s:%s" % (self.host, self.port)
 
 
-def mpd_cmd(cmd):
-	"""Send 'cmd' to mpd, and read lines until we get an 'OK'"""
-	mpd_raw(cmd)
-	return mpd_readlines(cmd)
+	def close():
+		self.bufsock.close()
 
-def list_to_map(lst):
-	curmap = {}
-	i = 0
-	while i < len(lst):
-		pos = lst[i].find(':')
-		if pos == -1:
-			raise Exception("list_to_map: no colon in line: \"%s\"" % lst[i])
+	# TODO: below here
+	def mpd_raw(cmd):
+		global bufsock
+		bufsock.send(cmd + '\n')
 
-		curmap[lst[i][:pos]] = lst[i][pos+2:]
-		i += 1
-	return curmap
+	def mpd_readlines(prevcmd):
+		lines = []
+
+		while True:
+			got = bufsock.readLine()
+
+			if len(got) == 0:
+				raise MPDException("mpd connection closed")
+
+			if got == 'OK':
+				return lines
+			elif got[:3] == 'ACK':
+				if prevcmd.find('password') == 0:
+					extra = ''
+				else:
+					extra = ' (from "%s")' % prevcmd
+				raise MPDException("MPD error: %s%s" % (got, extra))
+
+			lines.append(got)
 
 
-def mpd_getstate():
-	global mpd_statusdict
+	def mpd_cmd(cmd):
+		"""Send 'cmd' to mpd, and read lines until we get an 'OK'"""
+		mpd_raw(cmd)
+		return mpd_readlines(cmd)
 
-	mpd_statusdict = list_to_map(mpd_cmd("status"))
-	if 'state' not in mpd_statusdict.keys():
-		mpd_statusdict['state'] = 'stop'
-	for k in ['random', 'repeat', 'consume', 'xfade', 'single']:
-		try:
-			mpd_statusdict[k] = int(mpd_statusdict[k])
-		except:
-			mpd_statusdict[k] = 0
-
-def mpd_getplaying():
-	global mpd_current
-	mpd_current = list_to_map(mpd_cmd("currentsong"))
-	if 'Pos' in mpd_current.keys():
-		mpd_current['Pos'] = int(mpd_current['Pos'])
-	else:
-		mpd_current['Pos'] = 0
-
-def mpd_parseplaylist(data):
-	ret = []
-	i = 0
-	while i < len(data):
+	def list_to_map(lst):
 		curmap = {}
-		curmap['_selected'] = False
-		while i < len(data):
-			pos = data[i].find(':')
+		i = 0
+		while i < len(lst):
+			pos = lst[i].find(':')
 			if pos == -1:
-				raise MPDException("mpd_parseplaylist: no colon in line: \"%s\"" % data[i])
+				raise Exception("list_to_map: no colon in line: \"%s\"" % lst[i])
 
-			key = data[i][:pos]
-			if key == 'file' and 'file' in curmap.keys():
-				# already have, move on
-				break
-			curmap[key] = data[i][pos+2:]
+			curmap[lst[i][:pos]] = lst[i][pos+2:]
 			i += 1
-		ret.append(curmap)
-	return ret
-
-def mpd_getplaylist():
-	return mpd_parseplaylist(mpd_cmd("playlistinfo"))
-	# [ { 'file' : 'tim.mp3', 'Id' : 5 }, { 'file' : 'bob.mp3', 'Id' : 3 } ]
+		return curmap
 
 
-def mpd_updateplaylist():
-	global mpd_statusdict, mpd_playlist
+	def mpd_getstate():
+		global mpd_statusdict
 
-	# don't acquire the lock, reading only
-	oldpl = mpd_statusdict['playlist'] # id
-	changes = mpd_cmd('plchanges %s' % oldpl)
-	mpd_getstate()
-	newlen = mpd_statusdict['playlistlength']
+		mpd_statusdict = list_to_map(mpd_cmd("status"))
+		if 'state' not in mpd_statusdict.keys():
+			mpd_statusdict['state'] = 'stop'
+		for k in ['random', 'repeat', 'consume', 'xfade', 'single']:
+			try:
+				mpd_statusdict[k] = int(mpd_statusdict[k])
+			except:
+				mpd_statusdict[k] = 0
 
-	changes = mpd_parseplaylist(changes)
-
-	for track in changes:
-		if 'Pos' in track.keys():
-			track['Pos'] = int(track['Pos'])
-
-		found = False
-		for i in range(0, len(mpd_playlist)):
-			if mpd_playlist[i]['Id'] == track['Id']:
-				was_selected = mpd_playlist[i]['_selected']
-				mpd_playlist[i] = track
-				mpd_playlist[i]['_selected'] = was_selected
-				found = True
-				break
-		if not found:
-			mpd_playlist.append(track)
-
-	mpd_playlist = sorted(mpd_playlist, key = lambda tr: int(tr['Pos']))
-
-
-def mpd_noreply(cmd):
-	ret = mpd_cmd(cmd)
-	if len(ret) != 0:
-		extra = ''
-		if cmd.find('password') == -1:
-			extra = " (from %s)" % cmd
-		raise MPDException("Invalid MPD reply: %s%s" % (ret[0], extra))
-
-def mpd_time(s):
-	n = int(s)
-	secs  = n % 60
-	mins  = n / 60
-	hr    = mins / 60
-	mins %= 60
-
-	if hr:
-		return "%02d:%02d:%02d" % (hr, mins, secs)
-	return "%02d:%02d" % (mins, secs)
-
-
-def mpd_play(i = -1): mpd_noreply("play %d" % i) if i != -1 else mpd_noreply("play")
-def mpd_pause():      mpd_noreply("pause")
-def mpd_stop():       mpd_noreply("stop")
-def mpd_prev():       mpd_noreply("previous")
-def mpd_next():       mpd_noreply("next")
-def mpd_stop():       mpd_noreply("stop")
-
-def mpd_seek(pos):
-	global mpd_current
-	mpd_noreply("seek %d %d" % (mpd_current['Pos'], pos))
-
-def mpd_toggle():     global mpd_statusdict; mpd_pause() if mpd_statusdict['state'] == 'play' else mpd_play()
-def mpd_remove(n):    global draw_selected;  mpd_noreply("delete %d"    % n)
-
-def mpd_random():     global mpd_statusdict; mpd_noreply("random %d"    % (1-mpd_statusdict['random']))
-def mpd_repeat():     global mpd_statusdict; mpd_noreply("repeat %d"    % (1-mpd_statusdict['repeat']))
-def mpd_consume():    global mpd_statusdict; mpd_noreply("consume %d"   % (1-mpd_statusdict['consume']))
-def mpd_single():     global mpd_statusdict; mpd_noreply("single %d"    % (1-mpd_statusdict['single']))
-def mpd_password(pw): mpd_noreply('password "%s"' % pw)
-def mpd_move(a, b):   mpd_noreply('move "%s" "%s"' % (a, b))
-
-def mpd_update():
-	ret = mpd_cmd('update')
-	try:
-		if len(ret) != 1:
-			raise
-		parts = ret[0].split(' ')
-		if len(parts) == 2 and parts[0] == 'updating_db:':
-			int(parts[1])
+	def mpd_getplaying():
+		global mpd_current
+		mpd_current = list_to_map(mpd_cmd("currentsong"))
+		if 'Pos' in mpd_current.keys():
+			mpd_current['Pos'] = int(mpd_current['Pos'])
 		else:
-			raise
-		status("mpd updating...")
-	except:
-		raise MPDException("Invalid MPD update reply: %s" % ret)
+			mpd_current['Pos'] = 0
 
-def mpd_crossfade(n = -1):
-	global mpd_statusdict, mpd_xfade
+	def mpd_parseplaylist(data):
+		ret = []
+		i = 0
+		while i < len(data):
+			curmap = {}
+			curmap['_selected'] = False
+			while i < len(data):
+				pos = data[i].find(':')
+				if pos == -1:
+					raise MPDException("mpd_parseplaylist: no colon in line: \"%s\"" % data[i])
 
-	if n == -1:
-		if mpd_statusdict['xfade'] == 0:
-			mpd_noreply("crossfade %d" % mpd_xfade)
-		else:
-			mpd_noreply("crossfade 0")
-	else:
-		mpd_xfade = n
-		mpd_noreply("crossfade %d" % mpd_xfade)
+				key = data[i][:pos]
+				if key == 'file' and 'file' in curmap.keys():
+					# already have, move on
+					break
+				curmap[key] = data[i][pos+2:]
+				i += 1
+			ret.append(curmap)
+		return ret
 
-def mpd_setvol(v):    mpd_noreply("setvol %d" % v)
-def mpd_volume(v):    mpd_noreply("volume %d" % v)
+	def mpd_getplaylist():
+		return mpd_parseplaylist(mpd_cmd("playlistinfo"))
+		# [ { 'file' : 'tim.mp3', 'Id' : 5 }, { 'file' : 'bob.mp3', 'Id' : 3 } ]
 
-def mpd_idle(b):
-	if b:
-		mpd_raw('idle')
-	else:
+
+	def mpd_updateplaylist():
+		global mpd_statusdict, mpd_playlist
+
+		# don't acquire the lock, reading only
+		oldpl = mpd_statusdict['playlist'] # id
+		changes = mpd_cmd('plchanges %s' % oldpl)
+		mpd_getstate()
+		newlen = mpd_statusdict['playlistlength']
+
+		changes = mpd_parseplaylist(changes)
+
+		for track in changes:
+			if 'Pos' in track.keys():
+				track['Pos'] = int(track['Pos'])
+
+			found = False
+			for i in range(0, len(mpd_playlist)):
+				if mpd_playlist[i]['Id'] == track['Id']:
+					was_selected = mpd_playlist[i]['_selected']
+					mpd_playlist[i] = track
+					mpd_playlist[i]['_selected'] = was_selected
+					found = True
+					break
+			if not found:
+				mpd_playlist.append(track)
+
+		mpd_playlist = sorted(mpd_playlist, key = lambda tr: int(tr['Pos']))
+
+
+	def mpd_noreply(cmd):
+		ret = mpd_cmd(cmd)
+		if len(ret) != 0:
+			extra = ''
+			if cmd.find('password') == -1:
+				extra = " (from %s)" % cmd
+			raise MPDException("Invalid MPD reply: %s%s" % (ret[0], extra))
+
+	def mpd_time(s):
+		n = int(s)
+		secs  = n % 60
+		mins  = n / 60
+		hr    = mins / 60
+		mins %= 60
+
+		if hr:
+			return "%02d:%02d:%02d" % (hr, mins, secs)
+		return "%02d:%02d" % (mins, secs)
+
+
+	def mpd_play(i = -1): mpd_noreply("play %d" % i) if i != -1 else mpd_noreply("play")
+	def mpd_pause():      mpd_noreply("pause")
+	def mpd_stop():       mpd_noreply("stop")
+	def mpd_prev():       mpd_noreply("previous")
+	def mpd_next():       mpd_noreply("next")
+	def mpd_stop():       mpd_noreply("stop")
+
+	def mpd_seek(pos):
+		mpd_noreply("seek %d %d" % (mpd_current['Pos'], pos))
+
+	def mpd_toggle():     global mpd_statusdict; mpd_pause() if mpd_statusdict['state'] == 'play' else mpd_play()
+	def mpd_remove(n):    global draw_selected;  mpd_noreply("delete %d"    % n)
+
+	def mpd_random():     global mpd_statusdict; mpd_noreply("random %d"    % (1-mpd_statusdict['random']))
+	def mpd_repeat():     global mpd_statusdict; mpd_noreply("repeat %d"    % (1-mpd_statusdict['repeat']))
+	def mpd_consume():    global mpd_statusdict; mpd_noreply("consume %d"   % (1-mpd_statusdict['consume']))
+	def mpd_single():     global mpd_statusdict; mpd_noreply("single %d"    % (1-mpd_statusdict['single']))
+	def attempt_password(pw): mpd_noreply('password "%s"' % pw)
+	def mpd_move(a, b):   mpd_noreply('move "%s" "%s"' % (a, b))
+
+	def mpd_update():
+		ret = mpd_cmd('update')
 		try:
-			mpd_noreply('noidle')
+			if len(ret) != 1:
+				raise
+			parts = ret[0].split(' ')
+			if len(parts) == 2 and parts[0] == 'updating_db:':
+				int(parts[1])
+			else:
+				raise
+			status("mpd updating...")
+		except:
+			raise MPDException("Invalid MPD update reply: %s" % ret)
+
+	def mpd_crossfade(n = -1):
+		global mpd_statusdict, mpd_xfade
+
+		if n == -1:
+			if mpd_statusdict['xfade'] == 0:
+				mpd_noreply("crossfade %d" % mpd_xfade)
+			else:
+				mpd_noreply("crossfade 0")
+		else:
+			mpd_xfade = n
+			mpd_noreply("crossfade %d" % mpd_xfade)
+
+	def mpd_setvol(v):    mpd_noreply("setvol %d" % v)
+	def mpd_volume(v):    mpd_noreply("volume %d" % v)
+
+	def mpd_idle(b):
+		if b:
+			mpd_raw('idle')
+		else:
+			try:
+				mpd_noreply('noidle')
+			except:
+				pass
+
+	def mpd_playlists_get():
+		return map(lambda line: line[10:], filter(lambda line: line[:10] == 'playlist: ', mpd_cmd('lsinfo')))
+
+	def mpd_playlist_append(name):
+		mpd_noreply('load "%s"' % name)
+
+	def mpd_playlist_clear():
+		mpd_noreply('clear')
+
+	def mpd_playlist_save(name):
+		mpd_noreply('save "%s"' % name)
+
+	def mpd_playlist_del(name):
+		mpd_noreply('rm "%s"' % name)
+
+	def mpd_queue(ent):
+		curses.endwin()
+
+		ret = os.system("mpc-queue -f -%s" % ent['Pos'])
+		stdscr.refresh()
+		if ret == 0:
+			try:
+				t = ent['Title']
+			except:
+				t = 'track %s' % ent['Pos']
+			status("queued %s" % t)
+		else:
+			status("queue error!")
+
+class Screen:
+	def __init__(self):
+		self.stdscr = curses.initscr()
+		curses.start_color()
+
+		self.maybe_init_color()
+
+		curses.cbreak()
+		curses.noecho()
+		self.stdscr.keypad(1)
+
+	def maybe_init_color(self):
+		try:
+			curses.use_default_colors()
+			curses.init_pair(curses.COLOR_BLACK,   -1,                   -1)
+			curses.init_pair(curses.COLOR_GREEN,   curses.COLOR_GREEN,   -1)
+			curses.init_pair(curses.COLOR_WHITE,   curses.COLOR_WHITE,   -1)
+			curses.init_pair(curses.COLOR_RED,     curses.COLOR_RED,     -1)
+			curses.init_pair(curses.COLOR_CYAN,    curses.COLOR_CYAN,    -1)
+			curses.init_pair(curses.COLOR_MAGENTA, curses.COLOR_MAGENTA, -1)
+			curses.init_pair(curses.COLOR_BLUE,    curses.COLOR_BLUE,    -1)
+			curses.init_pair(curses.COLOR_YELLOW,  curses.COLOR_YELLOW,  -1)
 		except:
 			pass
 
-def mpd_playlists_get():
-	return map(lambda line: line[10:], filter(lambda line: line[:10] == 'playlist: ', mpd_cmd('lsinfo')))
+	def teardown(self):
+		curses.nocbreak()
+		curses.echo()
+		curses.endwin()
 
-def mpd_playlist_append(name):
-	mpd_noreply('load "%s"' % name)
+	def status(s, update = False):
+		self.stdscr.move(1, 0)
+		self.stdscr.clrtoeol()
+		self.stdscr.addstr(s)
+		if update:
+			self.stdscr.refresh();
 
-def mpd_playlist_clear():
-	mpd_noreply('clear')
+	def getmaxy(self):
+		return self.stdscr.getmaxyx()[0]
 
-def mpd_playlist_save(name):
-	mpd_noreply('save "%s"' % name)
+class Mpcpy:
+	def __init__(self, mpd, screen):
+		self.draw_selected = 0
+		self.draw_top = 0
+		self.draw_playing = -1
+		self.mpd = mpd
+		self.screen = screen
 
-def mpd_playlist_del(name):
-	mpd_noreply('rm "%s"' % name)
+	def view_current(self):
+		self.view_set(self.mpd.current.pos, False)
 
-def mpd_queue(ent):
-	curses.endwin()
+	def view_set(n, marklast = True):
+		if marklast:
+			lastmark()
 
-	ret = os.system("mpc-queue -f -%s" % ent['Pos'])
-	stdscr.refresh()
-	if ret == 0:
+		n = int(n)
+		maxy = self.screen.getmaxy() - 2
+
+		if n < 0:
+			n = 0
+		elif n >= len(mpd.playlist()):
+			n = len(mpd.playlist()) - 1
+
+		self.draw_selected = n
+
+		if n < self.draw_top or n > self.draw_top + maxy - 1:
+			dtop = self.draw_selected - maxy / 2
+
+			if dtop > len(mpd.playlist()) - maxy:
+				dtop = len(mpd.playlist()) - maxy
+			if dtop < 0:
+				dtop = 0
+
+			set_draw_top(dtop)
+
+	def input_wait():
+		# TODO: fix this idle nonsense
+		mpd.idle(True)
+
+		while True:
+			try:
+				ready = select.select([self.bufsock, sys.stdin], [], [], select_delay)
+				break
+			except Exception as (errno, strerr):
+				if errno != 4: # interrupted syscall
+					print >>sys.stderr, "select error: %d, %s" % (errno, strerr)
+					raise
+
+		# ready = ([self.bufsock?, sys.stdin?], [], [])
+
+		if self.bufsock in ready[0]:
+			self.handle_idle()
+		else:
+			mpd.idle(False)
+
+		if sys.stdin in ready[0]:
+			if not self.keys():
+				return False
+
+
+		# may have timed out, check mpd time
+		update_time()
+
+		return True
+
+	def goto_mark(self):
+		ch = getchar(0)
+		pos = mark_get(ch)
+		if pos == -1:
+			status("unset mark")
+		else:
+			view_set(pos, False)
+
+	def create_mark(self):
+		ch = getchar(0)
+		mark_add(ch, draw_selected)
+
+		s = '%d' % draw_selected
 		try:
-			t = ent['Title']
+			s = mpd_playlist[draw_selected]['Title']
 		except:
-			t = 'track %s' % ent['Pos']
-		status("queued %s" % t)
-	else:
-		status("queue error!")
+			pass
+		status("marked: %c => %s" % (ch, s))
+
+	def screen_position(self, where):
+		lastmark()
+		if where < 0:
+			draw_selected = draw_top + SCROLL_OFF
+		elif where == 0:
+			draw_selected = draw_top + maxy - SCROLL_OFF - 2 # 2 for the status bars
+		else:
+			draw_selected = draw_top + maxy / 2 - 1 # for status bar
+		self.clip_draw_selected()
+
+	def clip_draw_selected(self):
+		# FIXME: mpd.playlist -> &()
+		if self.draw_selected >= len(self.mpd.playlist):
+			self.draw_selected = len(self.mpd.playlist) - 1
+		if self.draw_selected < 0:
+			self.draw_selected = 0
+
+
+	def keys(self):
+		global draw_selected, draw_top, stdscr, search_rev
+		global mpd_current, mpd_playlist
+
+		maxy = stdscr.getmaxyx()[0]
+
+		ch = getchar()
+		if ch is None:
+			return True
+
+		try:
+
+			else: status("unknown key %d - 'h' for help" % ch)
+		except MPDException as e:
+			status("error: %s" % e)
+
+		return True
+
+
+	def handle_idle():
+		lines = mpd_readlines('idle')
+
+		for l in lines:
+			# database
+			# update
+			# stored_playlist
+			# mixer
+			# output
+			# sticker
+			# subscription
+			# message
+
+			if l.find('changed: ') == 0:
+				l = l[9:]
+
+				old_idx = mpd_current_pos()
+
+				if l == 'options':
+					# rzxyc opshuns
+					mpd_getstate()
+				elif l == 'playlist':
+					mpd_updateplaylist()
+					mpd_getplaying() # need to update the 'Pos' of playing
+					clip_draw_selected()
+				elif l == 'player' or l == 'mixer':
+					# play, pause, etc
+					mpd_getstate()
+					mpd_getplaying()
+				elif l == 'update':
+					status("mpd update complete")
+
+				if old_idx != mpd_current_pos():
+					global mpd_track_changed
+					mpd_track_changed = True
+
+
+	def run(self):
+		self.screen.status("Connected to mpd @ %s" % self.mpd.hoststr())
+
+		while True:
+			self.draw()
+			self.screen.refresh()
+			if not self.input_wait():
+				break
+
+		mpd.close()
+
+
+# ----
+
+def confirm(prompt):
+	status(prompt)
+	ch = getchar(0)
+	return ch == ord('\n') or ch == ord('y'):
 
 def playlist_save():
 	global stdscr
@@ -391,8 +701,7 @@ def playlist_save():
 		mpd_playlist_save(name)
 		status('saved as %s' % name)
 	except MPDException as e:
-		status('playlist "%s" exists, overwrite? (y/n): ' % name)
-		if confirm():
+		if confirm('playlist "%s" exists, overwrite? (y/n): ' % name):
 			mpd_playlist_del(name)
 			mpd_playlist_save(name)
 			status('overwrote playlist %s' % name)
@@ -561,13 +870,6 @@ def draw():
 	stdscr.move(0, 0)
 
 
-def status(s, update = False):
-	stdscr.move(1, 0)
-	stdscr.clrtoeol()
-	stdscr.addstr(s)
-	if update:
-		stdscr.refresh();
-
 def set_draw_top(n):
 	global draw_top
 	draw_top = n
@@ -602,33 +904,6 @@ def view_dec(n):
 				set_draw_top(0)
 
 
-def view_set(n):
-	global draw_selected, draw_top, stdscr, mpd_playlist
-
-	n = int(n)
-	maxy = stdscr.getmaxyx()[0] - 2
-
-	if n < 0:
-		n = 0
-	elif n >= len(mpd_playlist):
-		n = len(mpd_playlist) - 1
-
-	draw_selected = n
-
-	if n < draw_top or n > draw_top + stdscr.getmaxyx()[0] - 3:
-		dtop = draw_selected - maxy / 2
-
-		if dtop > len(mpd_playlist) - maxy:
-			dtop = len(mpd_playlist) - maxy
-		if dtop < 0:
-			dtop = 0
-
-		set_draw_top(dtop)
-
-
-def view_current():
-	global mpd_current
-	view_set(mpd_current['Pos'])
 
 def autocomplete_do(all, str):
 	min_len = 999
@@ -758,14 +1033,14 @@ def dosearch(reverse):
 
 		for w in words:
 			if search_regex.match(w[0]):
-				view_set(trax['Pos'])
+				view_set(trax['Pos'], False)
 				status("Found in %s" % w[1])
 				return
 
 	# search filenames
 	for trax in [mpd_playlist[i] for i in l]:
 		if search_regex.match(trax['file']):
-			view_set(trax['Pos'])
+			view_set(trax['Pos'], False)
 			status("Found in filename")
 			return
 
@@ -986,13 +1261,6 @@ def lastmark():
 	global draw_selected
 	mark_add(ord("'"), draw_selected)
 
-def clip_draw_selected():
-	global draw_selected, mpd_playlist
-	if draw_selected >= len(mpd_playlist):
-		draw_selected = len(mpd_playlist) - 1
-	if draw_selected < 0:
-		draw_selected = 0
-
 def shellout():
 	cmd = prompt('!')
 	if cmd is None:
@@ -1016,233 +1284,9 @@ def move_song(pos, up):
 		return True
 	return False
 
-def keys():
-	global draw_selected, draw_top, stdscr, search_rev
-	global mpd_current, mpd_playlist
-
-	maxy = stdscr.getmaxyx()[0]
-
-	ch = getchar()
-	if ch is None:
-		return True
-
-	try:
-		if False: pass # lolol
-		elif ch == ord('q'):      return False
-		elif ch == ord('j'):      view_inc(1)
-		elif ch == ord('k'):      view_dec(1)
-		elif ch == ctrl_and('d'): lastmark(); view_set(draw_selected + maxy / 2)
-		elif ch == ctrl_and('u'): lastmark(); view_set(draw_selected - maxy / 2)
-		elif ch == ctrl_and('f'): lastmark(); view_set(draw_selected + maxy)
-		elif ch == ctrl_and('b'): lastmark(); view_set(draw_selected - maxy)
-		elif ch == ctrl_and('e'): view_scroll(+1)
-		elif ch == ctrl_and('y'): view_scroll(-1)
-
-		elif ch == ord('!'): shellout()
-
-		elif ch == ord('g'):
-			ch = getchar(0)
-
-			if ch == ord('g'):
-				lastmark()
-				view_set(0)
-			elif ch == ord('s'):
-				seek()
-
-			elif ch == ord('S'):
-				playlist_save()
-			elif ch == ord('L'):
-				playlist_load()
-			elif ch == ord('C'):
-				playlist_clear()
-
-			else:
-				status("unknown g-key %d" % ch)
-
-		elif ch == ord("'"):
-			ch = getchar(0)
-			pos = mark_get(ch)
-			if pos == -1:
-				status("unset mark")
-			else:
-				view_set(pos)
-
-		elif ch == ord('m'):
-			ch = getchar(0)
-			mark_add(ch, draw_selected)
-
-			s = '%d' % draw_selected
-			try:
-				s = mpd_playlist[draw_selected]['Title']
-			except:
-				pass
-			status("marked: %c => %s" % (ch, s))
-
-		elif ch == ord('i'):
-			info(mpd_playlist[draw_selected])
-
-		elif ch == ord('G'):
-			lastmark()
-			view_set(len(mpd_playlist) - 1)
-
-		elif ch == ord('H'):
-			lastmark()
-			draw_selected = draw_top + SCROLL_OFF
-			clip_draw_selected()
-		elif ch == ord('L'):
-			lastmark()
-			draw_selected = draw_top + maxy - SCROLL_OFF - 2 # 2 for the status bars
-			clip_draw_selected()
-		elif ch == ord('M'):
-			lastmark()
-			draw_selected = draw_top + maxy / 2 - 1 # for status bar
-			clip_draw_selected()
-
-		elif ch == ord('d'):  playlist_remove_current()
-		elif ch == ord('p'):  mpd_toggle()
-		elif ch == ord('s'):  mpd_stop()
-		elif ch == ord('\n'): mpd_play(draw_selected)
-
-		elif ch == ord('Q'):
-			go = False
-			try:
-				which = mpd_playlist[draw_selected]
-				go = True
-			except:
-				status("nothing selected")
-
-			if go:
-				mpd_queue(which) # allow mpd exceptions to be thrown
-
-		elif ch == ord('>'):  mpd_next()
-		elif ch == ord('<'):  mpd_prev()
-
-		elif ch == ord('r') or ch == ord('1'):  mpd_repeat()
-		elif ch == ord('z') or ch == ord('2'):  mpd_random()
-		elif ch == ord('y') or ch == ord('3'):  mpd_single()
-		elif ch == ord('c') or ch == ord('5'):  mpd_consume()
-		elif ch == ord('x') or ch == ord('4'):  mpd_crossfade()
-		elif ch == ord('X'):
-			s = prompt('xfade: ')
-			if s != None and len(s):
-				good = False
-				try:
-					n = int(s)
-					good = True
-				except:
-					status('need number for xfade')
-
-				if good:
-					mpd_crossfade(n)
-					status('xfade set to %d' % mpd_xfade)
-
-		elif ch == ord('w') or ch == ord('W'):
-			# shift song up or down one
-			up = ch == ord('W')
-			have_selected = False
-
-			for entry in mpd_playlist:
-				if entry['_selected']:
-					have_selected = True
-					break
-
-			if have_selected:
-				to_move = map(lambda entry: entry[1], filter(lambda entry: entry[0]['_selected'], zip(mpd_playlist, range(len(mpd_playlist)))))
-
-				if not up:
-					to_move.reverse()
-
-				for entry in to_move:
-					move_song(entry, up)
-			else:
-				if move_song(draw_selected, up):
-					view_set(draw_selected + (-1 if up else 1))
-				else:
-					status("can't move from there")
-
-		elif ch == ord(' '):
-				mpd_playlist[draw_selected]['_selected'] ^= 1
-                                draw_selected += 1
-                                clip_draw_selected()
-
-		elif ch == ord('/') or ch == ord('?') or ch == ord('n') or ch == ord('N'):
-			go = True
-
-			if ch == ord('/') or ch == ord('?'):
-				search_rev = 0 if ch == ord('/') else 1
-				go = getsearch(search_rev)
-
-			lastmark()
-
-			if go:
-				order_adj = search_rev
-				if ch == ord('N'):
-					order_adj = 1 if order_adj == 0 else 0
-				dosearch(order_adj)
-
-		elif ch == ord('o'):
-			lastmark()
-			view_current()
-
-		elif ch == ord('P'):
-			password()
-
-		elif ch == ord('u'):
-			mpd_update()
-
-		elif ch == 410 or ch == 12:
-			# 12 = "\f" = ctrl+L
-			status('')
-			stdscr.refresh()
-
-		elif ch == ord('h'):
-			help()
-
-		else: status("unknown key %d - 'h' for help" % ch)
-	except MPDException as e:
-		status("error: %s" % e)
-
-	return True
-
 
 # ----------------------------------------------------
 # general code
-
-def handle_idle():
-	lines = mpd_readlines('idle')
-
-	for l in lines:
-		# database
-		# update
-		# stored_playlist
-		# mixer
-		# output
-		# sticker
-		# subscription
-		# message
-
-		if l.find('changed: ') == 0:
-			l = l[9:]
-
-			old_idx = mpd_current_pos()
-
-			if l == 'options':
-				# rzxyc opshuns
-				mpd_getstate()
-			elif l == 'playlist':
-				mpd_updateplaylist()
-				mpd_getplaying() # need to update the 'Pos' of playing
-				clip_draw_selected()
-			elif l == 'player' or l == 'mixer':
-				# play, pause, etc
-				mpd_getstate()
-				mpd_getplaying()
-			elif l == 'update':
-				status("mpd update complete")
-
-			if old_idx != mpd_current_pos():
-				global mpd_track_changed
-				mpd_track_changed = True
 
 def update_time():
 	global mpd_track_time
@@ -1263,130 +1307,44 @@ def update_time():
 			elif mpd_statusdict['state'] == 'stop':
 				mpd_track_time = 0
 
-def input_wait():
-	global bufsock
 
-	mpd_idle(True)
+def main(args):
+	if len(args) != 1:
+		print >>sys.stderr, "Usage: %s" % args[0]
+		sys.exit(2)
 
-	while True:
-		try:
-			global select_delay
-			ready = select.select([bufsock, sys.stdin], [], [], select_delay)
-			break
-		except Exception as (errno, strerr):
-			if errno != 4: # interrupted syscall
-				print >>sys.stderr, "select error: %d, %s" % (errno, strerr)
-				raise
+	screen = Screen()
 
-	# ready = ([bufsock?, sys.stdin?], [], [])
+	printme = None
+	lastexception = None
 
-	if bufsock in ready[0]:
-		handle_idle()
-	else:
-		mpd_idle(False)
-
-	if sys.stdin in ready[0]:
-		if not keys():
-			return False
-
-
-	# may have timed out, check mpd time
-	update_time()
-
-	return True
-
-
-def run():
-	global stdscr
-
-	status("Connected to mpd @ %s" % hoststr())
-	stdscr.addstr(0, 0, 'Getting status...')
-
-	while True:
-		draw()
-		stdscr.move(0, 0)
-		stdscr.refresh()
-		if not input_wait():
-			break
-
-	mpd_close()
-
-
-if len(sys.argv) > 1:
-	if len(sys.argv) == 2 and sys.argv[1] == '-T':
-		TRACING = True
-		print >>sys.stderr, "Tracing"
-	else:
-		cmd = "mpc "
-		for arg in sys.argv[1:]:
-			cmd += "%s " % arg
-		sys.exit(os.system(cmd))
-
-
-trace("init()")
-
-try:
-	stdscr = curses.initscr()
-
-	curses.start_color()
 	try:
-		# ignore colour failures
-		curses.use_default_colors()
-		curses.init_pair(curses.COLOR_BLACK,   -1,                   -1)
-		curses.init_pair(curses.COLOR_GREEN,   curses.COLOR_GREEN,   -1)
-		curses.init_pair(curses.COLOR_WHITE,   curses.COLOR_WHITE,   -1)
-		curses.init_pair(curses.COLOR_RED,     curses.COLOR_RED,     -1)
-		curses.init_pair(curses.COLOR_CYAN,    curses.COLOR_CYAN,    -1)
-		curses.init_pair(curses.COLOR_MAGENTA, curses.COLOR_MAGENTA, -1)
-		curses.init_pair(curses.COLOR_BLUE,    curses.COLOR_BLUE,    -1)
-		curses.init_pair(curses.COLOR_YELLOW,  curses.COLOR_YELLOW,  -1)
-	except:
+		screen.status('Connecting...', True)
+		mpd = create_mpd()
+
+		mpcpy = Mpcpy(mpd, screen)
+
+		mpcpy.view_current()
+		mpcpy.run()
+	except MPDException as e:
+		printme = "MPDException: %s" % e
+	except KeyboardInterrupt as e:
+		printme = "interrupted!"
+	except curses.error:
+		printme = "mpcpy needs more columns on the terminal"
+	except Exception as e:
+		lastexception = e
+
+	try:
+		screen.teardown()
+	except Exception:
 		pass
 
-	curses.cbreak()
-	curses.noecho()
-	stdscr.keypad(1)
-except Exception as e:
-	print "Couldn't start ncurses: %s" % e
-	sys.exit(1)
+	if printme:
+		print >>sys.stderr, printme
+		sys.exit(1)
+	elif lastexception:
+		import traceback
+		traceback.print_exc(lastexception)
 
-printme = ''
-lastexception = None
-
-try:
-	status('Connecting...', True)
-	mpd_connect()
-
-	status('Getting playlist...', True)
-	mpd_playlist = mpd_getplaylist()
-
-	status('Getting state...', True)
-	mpd_getstate()
-	mpd_getplaying()
-
-	view_current()
-
-	trace("calling run()")
-	run()
-except MPDException as e:
-	printme = "MPDException: %s" % e
-except KeyboardInterrupt as e:
-	printme = "interrupted!"
-except curses.error:
-	printme = "mpcpy needs more columns on the terminal"
-except Exception as e:
-	lastexception = e
-
-try:
-	curses.nocbreak()
-	curses.echo()
-	curses.endwin()
-except Exception:
-	pass
-
-if len(printme):
-	print >>sys.stderr, printme
-	sys.exit(1)
-elif lastexception is not None:
-	import traceback
-	traceback.print_exc(lastexception)
+main(sys.argv)
