@@ -458,6 +458,10 @@ class Screen:
 	def get_max_yx(self):
 		return self.stdscr.getmaxyx()
 
+	def get_yx(self):
+		return self.stdscr.getyx()
+	def set_yx(self, yx):
+		self.move(yx[0], yx[1])
 	def move(self, y, x):
 		self.stdscr.move(y, x)
 	def clrtoeol(self):
@@ -685,7 +689,7 @@ class Mpcpy:
 	def draw_status(self, time_extra = 0):
 		self.select_delay = 1
 
-		oldyx = stdscr.getyx()
+		oldyx = self.screen.get_yx()
 
 		if 'Title' in self.mpd.current.keys():
 			current_song = self.mpd.current['Title']
@@ -703,16 +707,14 @@ class Mpcpy:
 		time_now = int(times[0]) + time_extra
 		time_fin = int(times[1])
 
-		stdscr.move(0, 0)
-		stdscr.clrtoeol()
-
-		stdscr.addstr("%s showing %d/%d, %s: %s %s/%s" % (
+		self.screen.move(0, 0)
+		self.screen.clrtoeol()
+		self.screen.addstr("%s showing %d/%d, %s: %s %s/%s" % (
 			statusstr(self.mpd.statusdict),
-			draw_selected + 1, len(self.mpd.playlist),
+			self.draw_selected + 1, len(self.mpd.playlist),
 			self.mpd.statusdict['state'], current_song, format_time(time_now), format_time(time_fin)))
 
-		stdscr.move(oldyx[0], oldyx[1])
-		stdscr.refresh()
+		self.screen.set_yx(oldyx)
 
 	def goto_mark(self):
 		ch = self.screen.getchar(0)
