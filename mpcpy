@@ -685,37 +685,34 @@ class Mpcpy:
 	def draw_status(self, time_extra = 0):
 		self.select_delay = 1
 
-		try:
-			oldyx = stdscr.getyx()
+		oldyx = stdscr.getyx()
 
-			if 'Title' in self.mpd.current.keys():
-				current_song = self.mpd.current['Title']
-			elif 'file' in self.mpd.current.keys():
-				current_song = self.mpd.current['file']
-			else:
-				current_song = "<unknown>"
+		if 'Title' in self.mpd.current.keys():
+			current_song = self.mpd.current['Title']
+		elif 'file' in self.mpd.current.keys():
+			current_song = self.mpd.current['file']
+		else:
+			current_song = "<unknown>"
 
-			if 'time' in self.mpd.statusdict.keys():
-				play_time = self.mpd.statusdict['time']
-			else:
-				play_time = '00:00'
+		if 'time' in self.mpd.statusdict.keys():
+			play_time = self.mpd.statusdict['time']
+		else:
+			play_time = '00:00'
 
-			times = play_time.split(':')
-			time_now = int(times[0]) + time_extra
-			time_fin = int(times[1])
+		times = play_time.split(':')
+		time_now = int(times[0]) + time_extra
+		time_fin = int(times[1])
 
-			stdscr.move(0, 0)
-			stdscr.clrtoeol()
+		stdscr.move(0, 0)
+		stdscr.clrtoeol()
 
-			stdscr.addstr("%s showing %d/%d, %s: %s %s/%s" % (
-				statusstr(self.mpd.statusdict),
-				draw_selected + 1, len(self.mpd.playlist),
-				self.mpd.statusdict['state'], current_song, format_time(time_now), format_time(time_fin)))
+		stdscr.addstr("%s showing %d/%d, %s: %s %s/%s" % (
+			statusstr(self.mpd.statusdict),
+			draw_selected + 1, len(self.mpd.playlist),
+			self.mpd.statusdict['state'], current_song, format_time(time_now), format_time(time_fin)))
 
-			stdscr.move(oldyx[0], oldyx[1])
-			stdscr.refresh()
-		except:
-			pass
+		stdscr.move(oldyx[0], oldyx[1])
+		stdscr.refresh()
 
 	def goto_mark(self):
 		ch = self.screen.getchar(0)
