@@ -13,6 +13,10 @@ from BufRead import BufRead
 def ctrl_and(n):
 	return chr(ord(n) - ord('a') + 1)
 
+def default_set(map, key, val):
+	if key not in map.keys():
+		map[key] = val
+
 KEY_DEFINITIONS = {
 	'q': lambda self: self.exit(),
 	'j': lambda self: self.view_set(self.draw_selected + 1),
@@ -296,17 +300,17 @@ class Mpd:
 
 	def update_statusdict(self):
 		statusdict = list_to_map(self.cmd("status"))
-		if 'state' not in statusdict.keys():
-			statusdict['state'] = 'stop'
+
+		default_set(statusdict, 'status', 'stop')
+		default_set(statusdict, 'playlist', -1)
+		default_set(statusdict, 'state', 'stop')
+		default_set(statusdict, 'time', '00:00')
+
 		for k in ['random', 'repeat', 'consume', 'xfade', 'single', 'volume']:
 			try:
 				statusdict[k] = int(statusdict[k])
 			except:
 				statusdict[k] = 0
-
-		statusdict['playlist'] = -1
-		statusdict['state'] = 'stop'
-		statusdict['time'] = '00:00'
 
 		self.statusdict = statusdict
 
