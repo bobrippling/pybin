@@ -1033,7 +1033,6 @@ class Mpcpy:
 				self.screen.clrtoeol()
 
 		self.screen.move(0, 0)
-		self.screen.status("{0} tracks, current {1}".format(len(self.mpd.playlist), self.mpd.current_pos()))
 
 	def seek(self):
 		spos = self.screen.prompt('seek to: ')
