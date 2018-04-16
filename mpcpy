@@ -868,13 +868,13 @@ class Mpcpy:
 			self.screen.status('xfade set to %d' % mpd_xfade)
 
 	def move_track(self, pos, up):
-		if pos > 0 if up else pos < len(mpd_playlist)-1:
+		if pos > 0 if up else pos < len(self.mpd.playlist)-1:
 			to = pos + (-1 if up else 1)
-			mpd_move(pos, to)
+			self.mpd.move(pos, to)
 
-			tmp = mpd_playlist[pos]
-			mpd_playlist[pos] = mpd_playlist[to]
-			mpd_playlist[to] = tmp
+			tmp = self.mpd.playlist[pos]
+			self.mpd.playlist[pos] = self.mpd.playlist[to]
+			self.mpd.playlist[to] = tmp
 			return True
 		return False
 
@@ -892,8 +892,8 @@ class Mpcpy:
 			for entry in to_move:
 				self.move_track(entry, up)
 		else:
-			if self.move_track(draw_selected, up):
-				self.view_set(draw_selected + (-1 if up else 1), False)
+			if self.move_track(self.draw_selected, up):
+				self.view_set(self.draw_selected + (-1 if up else 1), False)
 			else:
 				self.screen.status("can't move from there")
 
@@ -951,7 +951,7 @@ class Mpcpy:
 					self.view_set(track['Pos'], False)
 					self.screen.status("")
 					return
-		self.screen.status("Couldn't find %s" % search_str)
+		self.screen.status("Couldn't find %s" % self.search_regex)
 
 	def view_current(self):
 		self.lastmark()
