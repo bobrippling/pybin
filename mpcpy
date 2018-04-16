@@ -971,6 +971,8 @@ class Mpcpy:
 		self.mpd.close()
 
 	def draw_line(self, i, max_x):
+		entry = self.mpd.playlist[i]
+
 		if i == self.draw_selected:
 			if i == self.mpd.current['Pos']:
 				# selected _and_ playing
@@ -985,10 +987,10 @@ class Mpcpy:
 		else:
 			attr = curses.A_NORMAL
 
-		time   = try_key(self.mpd.playlist[i], 'Time', 0)
-		artist = try_key(self.mpd.playlist[i], 'Artist')
-		title  = try_key(self.mpd.playlist[i], 'Title')
-		album  = try_key(self.mpd.playlist[i], 'Album')
+		time   = try_key(entry, 'Time', 0)
+		artist = try_key(entry, 'Artist')
+		title  = try_key(entry, 'Title')
+		album  = try_key(entry, 'Album')
 
 		scale = float(max_x) / float(SPACE_TIME + SPACE_ARTIST + SPACE_TITLE + SPACE_ALBUM)
 
@@ -999,19 +1001,19 @@ class Mpcpy:
 
 		time = "%-*s" % (int(SPACE_TIME * scale), time)
 
-		formatted_str = "%-*s %-*s %-*s" % (
+		formatted_str = ("%-*s %-*s %-*s" % (
 			int(SPACE_ARTIST * scale), artist,
 			int(SPACE_TITLE  * scale), title,
-			int(SPACE_ALBUM  * scale), album)
+			int(SPACE_ALBUM  * scale), album)).rstrip()
 
 		if len(formatted_str.replace(' ', '')) == 0:
-			formatted_str = try_key(self.mpd.playlist[i], 'file', '?')
+			formatted_str = try_key(entry, 'file', '?')
+
+		together = time + formatted_str
+		final = (together[:max_x - 3] + '...') if len(together) > max_x else together
 
 		self.screen.clrtoeol()
-		try:
-			self.screen.addstr(time + formatted_str, attr)
-		except curses.error:
-			pass
+		self.screen.addstr(final, attr)
 
 	def draw(self):
 		max_y, max_x = self.screen.get_max_yx()
