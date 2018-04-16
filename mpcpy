@@ -115,23 +115,29 @@ def try_key(dict, key, default = ''):
 	return dict[key] if key in dict.keys() else default
 
 def parse_playlist(raw):
+	def filter_val(key, val):
+		if key == 'Pos':
+			return int(val)
+		return val
+
 	playlist = []
 	curmap = {}
 	for line in raw:
-		pos = line.find(':')
-		if pos == -1:
+		colon = line.find(':')
+		if colon == -1:
 			raise MPDException("playlist: no colon in line: \"%s\"" % line)
 
-		key = line[:pos]
-		val = line[pos+2:]
+		key = line[:colon]
+		val = filter_val(key, line[colon+2:])
 
-		if key == 'Pos':
-			val = int(val)
-
-		curmap[key] = val
-		if key == "file":
+		if key in curmap:
 			playlist.append(curmap)
 			curmap = {}
+
+		curmap[key] = val
+
+	if len(playlist) and curmap != playlist[-1]:
+		playlist.append(curmap)
 
 	return playlist
 
