@@ -1101,7 +1101,7 @@ class Mpcpy:
 		self.mpd.remove(pos)
 
 	def password(self):
-		pw = prompt('password: ', pw=1)
+		pw = self.screen.prompt('password: ', pw=1)
 		if pw == None or len(pw) == 0:
 			return
 		self.screen.status('password accepted')
@@ -1158,7 +1158,7 @@ class Mpcpy:
 				self.draw_selected = y
 
 	def shellout(self):
-		cmd = prompt('!')
+		cmd = self.screen.prompt('!')
 		if cmd is None:
 			return
 		if cmd == '':
@@ -1166,7 +1166,7 @@ class Mpcpy:
 		self.screen.hide()
 		os.system(cmd)
 		sys.stdout.write("(press RETURN)")
-		while getchar(0) != ord('\n'):
+		while self.screen.getchar(0) != ord('\n'):
 			pass
 
 
