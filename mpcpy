@@ -1097,7 +1097,8 @@ class Mpcpy:
 		self.mpd.playlist_clear()
 
 	def playlist_remove_current(self):
-		self.mpd.remove(self.draw_selected)
+		pos = self.mpd.playlist[self.draw_selected]['Pos']
+		self.mpd.remove(pos)
 
 	def password(self):
 		pw = prompt('password: ', pw=1)
