@@ -8,6 +8,8 @@ import time
 import string
 import select
 
+debug_plchanges = False
+
 from BufRead import BufRead
 
 def ctrl_and(n):
@@ -258,8 +260,8 @@ class Mpd:
 		if len(pw):
 			self.attempt_password(pw)
 		self.update_current()
-		self.update_playlist_full()
 		self.update_statusdict()
+		self.update_playlist_full()
 
 	def hoststr(self):
 		return "%s:%s" % (self.host, self.port)
@@ -326,23 +328,48 @@ class Mpd:
 
 	def update_playlist_full(self):
 		self.playlist = parse_playlist(self.cmd("playlistinfo"))
+		self.last_diffed_playlist = self.statusdict['playlist']
 
 	def update_playlist_diff(self):
-		old_playlist_id = self.statusdict['playlist']
-		playlist_changes = self.cmd('plchanges %s' % old_playlist_id)
-		changes = parse_playlist(playlist_changes)
+		playlist_changes = self.cmd('plchanges %s' % self.last_diffed_playlist)
+		self.update_statusdict() # for status.playlistlength
+		self.last_diffed_playlist = self.statusdict['playlist']
 
-		for track in changes:
-			found = False
-			for i in range(0, len(self.playlist)):
-				if self.playlist[i]['Id'] == track['Id']:
-					self.playlist[i] = track
-					found = True
-					break
-			if not found:
+		old_length = len(self.playlist)
+		new_length = int(self.statusdict['playlistlength'])
+
+		changed_tracks = parse_playlist(playlist_changes)
+
+		if debug_plchanges:
+			print >>sys.stderr, "old_length = {0}".format(old_length)
+			print >>sys.stderr, "new_length = {0}".format(new_length)
+			print >>sys.stderr, "orig playlist:"
+			for track in self.playlist:
+				print >>sys.stderr, "  .id={0} .pos={1} .file={2}".format(track['Id'], track['Pos'], track['file'])
+			print >>sys.stderr, "changed_tracks:"
+
+		for track in changed_tracks:
+			if debug_plchanges:
+				print >>sys.stderr, "  .id={0} .pos={1} .file={2}".format(track['Id'], track['Pos'], track['file'])
+
+			pos = track['Pos']
+			if pos < old_length:
+				if track['Id'] != self.playlist[pos]['Id']:
+					self.playlist[pos] = track
+			else:
 				self.playlist.append(track)
 
+		if new_length == 0:
+			self.playlist = []
+		else:
+			self.playlist = self.playlist[:new_length]
+
 		self.playlist = sorted(self.playlist, key=lambda track: track['Pos'])
+
+		if debug_plchanges:
+			print >>sys.stderr, "new playlist:"
+			for track in self.playlist:
+				print >>sys.stderr, "  .id={0} .pos={1} .file={2}".format(track['Id'], track['Pos'], track['file'])
 
 	def play(self, i = -1): self.cmd_noreply("play %d" % i) if i != -1 else self.cmd_noreply("play")
 	def pause(self):      self.cmd_noreply("pause")
