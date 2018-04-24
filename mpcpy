@@ -503,10 +503,7 @@ class Screen:
 	def clrtoeol(self):
 		self.stdscr.clrtoeol()
 	def addstr(self, s, *args):
-		#try:
 		self.stdscr.addstr(s, *args)
-		#except curses.error:
-		#	pass
 
 	def getchar(self, timeout = 1):
 		if timeout:
@@ -1045,7 +1042,10 @@ class Mpcpy:
 		final = (together[:max_x - 3] + '...') if len(together) > max_x else together
 
 		self.screen.clrtoeol()
-		self.screen.addstr(final, attr)
+		try:
+			self.screen.addstr(final, attr)
+		except curses.error:
+			pass
 
 	def draw(self):
 		max_y, max_x = self.screen.get_max_yx()
