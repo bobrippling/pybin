@@ -1104,8 +1104,8 @@ class Mpcpy:
 		pw = self.screen.prompt('password: ', pw=1)
 		if pw == None or len(pw) == 0:
 			return
-		self.screen.status('password accepted')
 		self.mpd.password(pw)
+		self.screen.status('password accepted')
 
 	def info(self, current):
 		h, w = self.screen.get_max_yx()
