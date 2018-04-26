@@ -260,6 +260,7 @@ class Mpd:
 		self.current = {}
 		self.statusdict = {}
 		self.xfade = 5
+		self.waiting_on_cmd = ''
 		if len(pw):
 			self.attempt_password(pw)
 		self.update_current()
@@ -274,6 +275,8 @@ class Mpd:
 		self.bufsock.close()
 
 	def cmd_raw(self, cmd):
+		if self.waiting_on_cmd:
+			raise MpcpyException("still waiting on a previous command (\"{0}\")".format(self.waiting_on_cmd))
 		self.bufsock.send(cmd + '\n')
 
 	def readlines(self, prevcmd):
@@ -304,13 +307,23 @@ class Mpd:
 		self.cmd_raw(cmd)
 		return self.readlines(cmd)
 
-	def cmd_noreply(self, cmd):
-		ret = self.cmd(cmd)
-		self.check_noreply(ret)
+	def cmd_noreply(self, cmd, **kwargs):
+		if 'nowait' in kwargs and kwargs['nowait']:
+			self.cmd_raw(cmd)
+			self.waiting_on_cmd = cmd
+		else:
+			ret = self.cmd(cmd)
+			self.check_noreply(ret)
 
 	def check_noreply(self, lines):
 		if len(lines) != 0:
 			raise MPDException("Invalid MPD reply: %s" % lines[0])
+
+	def resolve_wait(self):
+		cmd = self.waiting_on_cmd
+		self.waiting_on_cmd = ''
+		lines = self.readlines(cmd)
+		self.check_noreply(lines)
 
 	def update_statusdict(self):
 		statusdict = list_to_map(self.cmd("status"))
