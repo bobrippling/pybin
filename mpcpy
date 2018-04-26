@@ -1119,7 +1119,7 @@ class Mpcpy:
 		pw = self.screen.prompt('password: ', pw=1)
 		if pw == None or len(pw) == 0:
 			return
-		self.mpd.password(pw)
+		self.mpd.attempt_password(pw)
 		self.screen.status('password accepted')
 
 	def info(self, current):
