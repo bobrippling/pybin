@@ -1,5 +1,9 @@
 #!/usr/bin/env python2.6
 
+# TODO: output control
+# FIXME: move idle logic all into mpd
+# FIXME: track selection
+
 import curses
 import socket
 import sys, errno, os
@@ -90,9 +94,6 @@ KEY_DEFINITIONS = {
 	'{': lambda self: self.view_move_paragraph(-1),
 	'}': lambda self: self.view_move_paragraph(+1),
 }
-
-# TODO:  output control
-# FIXME: optimise playlist lagging at startup
 
 # const
 SCROLL_OFF     = 10
@@ -891,6 +892,7 @@ class Mpcpy:
 			self.normal_input = ''
 
 	def handle_idle(self):
+		# FIXME: this belongs in mpd
 		lines = self.mpd.idle_response()
 
 		for l in lines:
