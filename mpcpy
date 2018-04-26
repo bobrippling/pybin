@@ -818,7 +818,10 @@ class Mpcpy:
 				self.screen.status('playlist unsaved')
 
 	def handle_key(self, keystr):
-		KEY_DEFINITIONS[keystr](self)
+		try:
+			KEY_DEFINITIONS[keystr](self)
+		except MPDException as e:
+			self.screen.status("%s" % e, color=curses.A_BOLD | curses.color_pair(curses.COLOR_RED))
 
 	def handle_keys(self):
 		maxy = self.screen.get_max_y()
