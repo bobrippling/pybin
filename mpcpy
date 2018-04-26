@@ -306,8 +306,11 @@ class Mpd:
 
 	def cmd_noreply(self, cmd):
 		ret = self.cmd(cmd)
-		if len(ret) != 0:
-			raise MPDException("Invalid MPD reply: %s" % ret[0])
+		self.check_noreply(ret)
+
+	def check_noreply(self, lines):
+		if len(lines) != 0:
+			raise MPDException("Invalid MPD reply: %s" % lines[0])
 
 	def update_statusdict(self):
 		statusdict = list_to_map(self.cmd("status"))
