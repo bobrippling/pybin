@@ -484,11 +484,11 @@ class Screen:
 	def clear(self):
 		self.stdscr.clear()
 
-	def status(self, s, update = False):
+	def status(self, s, **kwargs):
 		self.stdscr.move(1, 0)
 		self.stdscr.clrtoeol()
 		self.stdscr.addstr(s)
-		if update:
+		if 'update' in kwargs and kwargs['update']:
 			self.stdscr.refresh();
 
 	def get_max_y(self):
@@ -1196,7 +1196,7 @@ def main(args):
 	lastexception = None
 
 	try:
-		screen.status('Connecting...', True)
+		screen.status('Connecting...', update=True)
 		mpd = create_mpd(screen)
 
 		mpcpy = Mpcpy(mpd, screen)
