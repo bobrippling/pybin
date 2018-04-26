@@ -708,8 +708,9 @@ class Mpcpy:
 		self.should_exit = True
 
 	def input_wait(self):
-		# TODO: fix this idle nonsense
-		self.mpd.idle(True)
+		if not self.mpd.waiting_on_cmd:
+			self.mpd.idle(True)
+		# else we're waiting for the cmd response
 
 		while True:
 			try:
@@ -721,7 +722,10 @@ class Mpcpy:
 				raise e
 
 		if self.mpd.bufsock in ready[0]:
-			self.handle_idle()
+			if self.mpd.waiting_on_cmd:
+				self.try_catch_mpd(lambda: self.mpd.resolve_wait())
+			else:
+				self.handle_idle()
 		else:
 			self.mpd.idle(False)
 
