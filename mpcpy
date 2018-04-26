@@ -264,6 +264,7 @@ class Mpd:
 		self.statusdict = {}
 		self.xfade = 5
 		self.waiting_on_cmd = ''
+		self.is_idle = False
 		if len(pw):
 			self.attempt_password(pw)
 		self.update_current()
@@ -280,6 +281,7 @@ class Mpd:
 	def cmd_raw(self, cmd):
 		if self.waiting_on_cmd:
 			raise MpcpyException("still waiting on a previous command (\"{0}\")".format(self.waiting_on_cmd))
+		self.unidle()
 		self.bufsock.send(cmd + '\n')
 
 	def readlines(self, prevcmd):
@@ -301,6 +303,10 @@ class Mpd:
 				raise MPDException("MPD error: %s%s" % (got, extra))
 
 			lines.append(got)
+
+	def idle_response(self):
+		self.is_idle = False
+		return self.readlines('<unidling>')
 
 	def current_pos(self):
 		return try_key(self.current, 'Pos') if self.current else -1
@@ -422,12 +428,19 @@ class Mpd:
 
 	def idle(self, on):
 		if on:
-			self.cmd_raw('idle')
+			if not self.is_idle:
+				self.cmd_raw('idle')
+				self.is_idle = True
 		else:
-			try:
-				self.cmd_noreply('noidle')
-			except MPDException:
-				pass
+			if self.is_idle:
+				try:
+					self.is_idle = False # important to do this before the cmd_noreply()
+					self.cmd_noreply('noidle')
+				except MPDException:
+					pass
+
+	def unidle(self):
+		self.idle(False)
 
 	def update(self):
 		ret = self.cmd_noreply('update')
@@ -734,9 +747,6 @@ class Mpcpy:
 				self.try_catch_mpd(lambda: self.mpd.resolve_wait())
 			else:
 				self.handle_idle()
-		else:
-			# TODO: don't un-idle here - do it in mpd, so we're not constantly idle and un-idling just to update a time
-			self.mpd.idle(False)
 
 		if sys.stdin in ready[0]:
 			self.handle_keys()
@@ -881,7 +891,7 @@ class Mpcpy:
 			self.normal_input = ''
 
 	def handle_idle(self):
-		lines = self.mpd.readlines('idle')
+		lines = self.mpd.idle_response()
 
 		for l in lines:
 			# database
