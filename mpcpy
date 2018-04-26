@@ -86,6 +86,9 @@ KEY_DEFINITIONS = {
 
 	# 12 = "\f" = ctrl+L
 	chr(12): lambda self: self.refresh(),
+
+	'{': lambda self: self.view_move_paragraph(-1),
+	'}': lambda self: self.view_move_paragraph(+1),
 }
 
 # TODO:  output control
@@ -671,6 +674,18 @@ class Mpcpy:
 
 		if dtop is not None:
 			self.draw_top = dtop
+
+	def view_move_paragraph(self, direction):
+		i = self.draw_selected
+		curtrack = self.mpd.playlist[i]
+
+		while i >= 0 and i < len(self.mpd.playlist):
+			i += direction
+			next = self.mpd.playlist[i]
+			if try_key(next, 'Artist') != try_key(curtrack, 'Artist'):
+				break
+
+		self.view_set(i)
 
 	def exit(self):
 		self.should_exit = True
