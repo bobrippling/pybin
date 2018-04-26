@@ -732,6 +732,7 @@ class Mpcpy:
 			else:
 				self.handle_idle()
 		else:
+			# TODO: don't un-idle here - do it in mpd, so we're not constantly idle and un-idling just to update a time
 			self.mpd.idle(False)
 
 		if sys.stdin in ready[0]:
