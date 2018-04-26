@@ -962,10 +962,6 @@ class Mpcpy:
 		if pos > 0 if up else pos < len(self.mpd.playlist)-1:
 			to = pos + (-1 if up else 1)
 			self.mpd.move(pos, to)
-
-			tmp = self.mpd.playlist[pos]
-			self.mpd.playlist[pos] = self.mpd.playlist[to]
-			self.mpd.playlist[to] = tmp
 			return True
 		return False
 
