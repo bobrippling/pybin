@@ -426,7 +426,7 @@ class Mpd:
 		else:
 			try:
 				self.cmd_noreply('noidle')
-			except:
+			except MPDException:
 				pass
 
 	def update(self):
