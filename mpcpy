@@ -119,6 +119,9 @@ def list_to_map(lst):
 def try_key(dict, key, default = ''):
 	return dict[key] if key in dict.keys() else default
 
+def hoststr(host, port):
+	return "%s:%s" % (host, port)
+
 def parse_playlist(raw):
 	def filter_val(key, val):
 		if key == 'Pos':
@@ -226,7 +229,7 @@ def create_mpd(screen):
 	try:
 		sock.connect((host, port))
 	except Exception as e:
-		raise MPDException("Couldn't connect to mpd @ %s - %s" % (hoststr(), e))
+		raise MPDException("Couldn't connect to mpd @ %s - %s" % (hoststr(host, port), e))
 
 	bufsock = BufRead(sock)
 
@@ -243,7 +246,7 @@ def create_mpd(screen):
 	try:
 		valid_version = int(vers[0]) == 0 and (16 <= int(vers[1]) and int(vers[1]) <= 21)
 
-		if not valid_version and not screen.confirm("MPD (%s) version: %s, continue? (Y/n) " % (hoststr(), version_data[2])):
+		if not valid_version and not screen.confirm("MPD (%s) version: %s, continue? (Y/n) " % (hoststr(host, port), version_data[2])):
 			raise MPDException("Invalid MPD version: %s" % version_data[2])
 	except TypeError as e:
 		raise MPDException("Invalid version string from mpd: %s" % version_data[2])
@@ -268,7 +271,7 @@ class Mpd:
 		self.update_playlist_full()
 
 	def hoststr(self):
-		return "%s:%s" % (self.host, self.port)
+		return hoststr(self.host, self.port)
 
 
 	def close(self):
