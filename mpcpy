@@ -817,6 +817,9 @@ class Mpcpy:
 			else:
 				self.screen.status('playlist unsaved')
 
+	def handle_key(self, keystr):
+		KEY_DEFINITIONS[keystr](self)
+
 	def handle_keys(self):
 		maxy = self.screen.get_max_y()
 
@@ -839,7 +842,7 @@ class Mpcpy:
 			self.screen.status("unknown key %d" % ch)
 			self.normal_input = ''
 		elif len(possible) == 1:
-			KEY_DEFINITIONS[possible[0]](self)
+			self.handle_key(possible[0])
 			self.normal_input = ''
 
 	def handle_idle(self):
