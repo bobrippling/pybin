@@ -390,7 +390,12 @@ class Mpd:
 			for track in self.playlist:
 				print >>sys.stderr, "  .id={0} .pos={1} .file={2}".format(track['Id'], track['Pos'], track['file'])
 
-	def play(self, i = -1): self.cmd_noreply("play %d" % i) if i != -1 else self.cmd_noreply("play")
+	def play(self, i = -1):
+		if i != -1:
+			self.cmd_noreply("play %d" % i, nowait=True)
+		else:
+			self.cmd_noreply("play", nowait=True)
+
 	def pause(self):      self.cmd_noreply("pause")
 	def stop(self):       self.cmd_noreply("stop")
 	def prev(self):       self.cmd_noreply("previous")
