@@ -667,6 +667,7 @@ class Mpcpy:
 		self.search_regex = None
 		self.search_str = ''
 		self.normal_input = ''
+		self.selection = {}
 
 	def lastmark(self):
 		self.mark_add(ord("'"), self.draw_selected)
@@ -968,16 +969,18 @@ class Mpcpy:
 	def shift_tracks(self, dir):
 		# shift song up or down one
 		up = dir == 'up'
-		#have_selected = len(filter(lambda track: track['_selected'], self.mpd.playlist)) > 0
+		have_selected = len(self.selection) > 0
 
-		if False and have_selected:
-			to_move = map(lambda entry: entry[1], filter(lambda entry: entry[0]['_selected'], zip(self.mpd.playlist, range(len(self.mpd.playlist)))))
+		if have_selected:
+			ids = self.selection.keys()
+			to_move = filter(lambda entry: entry['Id'] in ids, self.mpd.playlist)
 
 			if not up:
 				to_move.reverse()
 
 			for entry in to_move:
-				self.move_track(entry, up)
+				if not self.move_track(entry['Pos'], up):
+					break
 		else:
 			if self.move_track(self.draw_selected, up):
 				self.view_set(self.draw_selected + (-1 if up else 1), False)
@@ -985,8 +988,12 @@ class Mpcpy:
 				self.screen.status("can't move from there")
 
 	def toggle_selection(self):
-		# FIXME
-		#self.playlist[self.draw_selected]['_selected'] ^= 1
+		track = self.mpd.playlist[self.draw_selected]
+		id = track['Id']
+		if id in self.selection:
+			del self.selection[id]
+		else:
+			self.selection[id] = True
 		self.draw_selected += 1
 		self.clip_draw_selected()
 
@@ -1072,9 +1079,8 @@ class Mpcpy:
 				attr = curses.A_BOLD | curses.color_pair(curses.COLOR_GREEN)
 		elif i == self.mpd.current_pos():
 			attr = curses.A_BOLD | curses.color_pair(curses.COLOR_RED)
-		# FIXME
-		#elif self.mpd.playlist[i]['_selected']:
-		#	attr = curses.color_pair(curses.COLOR_BLUE)
+		elif self.mpd.playlist[i]['Id'] in self.selection:
+			attr = curses.color_pair(curses.COLOR_BLUE)
 		else:
 			attr = curses.A_NORMAL
 
@@ -1159,6 +1165,7 @@ class Mpcpy:
 		self.mpd.playlist_clear()
 
 	def playlist_remove_current(self):
+		# FIXME: handle self.selection
 		pos = self.mpd.playlist[self.draw_selected]['Pos']
 		self.mpd.remove(pos)
 
