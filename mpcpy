@@ -284,7 +284,7 @@ class Mpd:
 
 	def cmd_raw(self, cmd):
 		if self.waiting_on_cmd:
-			raise MpcpyException("still waiting on a previous command (\"{0}\")".format(self.waiting_on_cmd))
+			raise MPDException("still waiting on a previous command (\"{0}\")".format(self.waiting_on_cmd))
 		self.unidle()
 		self.bufsock.send(cmd + '\n')
 
