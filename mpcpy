@@ -123,32 +123,35 @@ def try_key(dict, key, default = ''):
 def hoststr(host, port):
 	return "%s:%s" % (host, port)
 
+def parse_keyval(raw, custom_filter = lambda k, v: v):
+	entries = []
+	curmap = {}
+	for line in raw:
+		colon = line.find(':')
+		if colon == -1:
+			raise MPDException("no colon in line: \"%s\"" % line)
+
+		key = line[:colon]
+		val = custom_filter(key, line[colon+2:])
+
+		if key in curmap:
+			entries.append(curmap)
+			curmap = {}
+
+		curmap[key] = val
+
+	if len(entries) and curmap != entries[-1]:
+		entries.append(curmap)
+
+	return entries
+
 def parse_playlist(raw):
 	def filter_val(key, val):
 		if key == 'Pos':
 			return int(val)
 		return val
 
-	playlist = []
-	curmap = {}
-	for line in raw:
-		colon = line.find(':')
-		if colon == -1:
-			raise MPDException("playlist: no colon in line: \"%s\"" % line)
-
-		key = line[:colon]
-		val = filter_val(key, line[colon+2:])
-
-		if key in curmap:
-			playlist.append(curmap)
-			curmap = {}
-
-		curmap[key] = val
-
-	if len(playlist) and curmap != playlist[-1]:
-		playlist.append(curmap)
-
-	return playlist
+	return parse_keyval(raw, filter_val)
 
 def format_time(s):
 	n = int(s)
