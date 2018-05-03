@@ -140,7 +140,7 @@ def parse_keyval(raw, custom_filter = lambda k, v: v):
 
 		curmap[key] = val
 
-	if len(entries) and curmap != entries[-1]:
+	if len(curmap) and curmap not in entries:
 		entries.append(curmap)
 
 	return entries
