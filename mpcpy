@@ -95,6 +95,7 @@ KEY_DEFINITIONS = {
 }
 
 # const
+STATUS_HEIGHT  = 2
 SCROLL_OFF     = 10
 CURSES_TIMEOUT = 250
 
@@ -1118,7 +1119,7 @@ class Mpcpy:
 		max_y, max_x = self.screen.get_max_yx()
 
 		initial_i = self.draw_top
-		for y, i in zip(range(2, max_y), range(initial_i, initial_i + max_y)):
+		for y, i in zip(range(STATUS_HEIGHT, max_y), range(initial_i, initial_i + max_y)):
 			self.screen.move(y, 0)
 
 			if i < len(self.mpd.playlist):
