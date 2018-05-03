@@ -547,6 +547,10 @@ class Screen:
 	def addstr(self, s, *args):
 		self.stdscr.addstr(s, *args)
 
+	def calc_scrolloff(self, wanted):
+		drawable_space = self.get_max_y() - STATUS_HEIGHT
+		return min(drawable_space / 2, wanted)
+
 	def getchar(self, timeout = 1):
 		if timeout:
 			self.stdscr.timeout(CURSES_TIMEOUT) # after 100ms, -1 is returned
@@ -695,19 +699,21 @@ class Mpcpy:
 
 		self.draw_selected = n
 
-		limit_top = self.draw_top + SCROLL_OFF
+		scroll_off = self.screen.calc_scrolloff(SCROLL_OFF)
+
+		limit_top = self.draw_top + scroll_off
 		if limit_top < 0: limit_top = 0
-		limit_bot = self.draw_top + maxy - 1 - SCROLL_OFF
+		limit_bot = self.draw_top + maxy - 1 - scroll_off
 		if limit_bot < 0: limit_bot = 0
 
 		dtop = None
 
 		if n < limit_top:
-			dtop = n - SCROLL_OFF
+			dtop = n - scroll_off
 			if dtop < 0: dtop = 0
 			self.draw_top = dtop
 		elif n > limit_bot:
-			dtop = n - maxy + SCROLL_OFF
+			dtop = n - maxy + scroll_off
 			if dtop >= len(self.mpd.playlist):
 				dtop = len(self.mpd.playlist)
 			self.draw_top = dtop
@@ -828,10 +834,11 @@ class Mpcpy:
 	def screen_position(self, where):
 		self.lastmark()
 		maxy = self.screen.get_max_y()
+		scroll_off = self.screen.calc_scrolloff(SCROLL_OFF)
 		if where < 0:
-			self.draw_selected = self.draw_top + SCROLL_OFF
+			self.draw_selected = self.draw_top + scroll_off
 		elif where == 0:
-			self.draw_selected = self.draw_top + maxy - SCROLL_OFF - 2 # 2 for the status bars
+			self.draw_selected = self.draw_top + maxy - scroll_off - 2 # 2 for the status bars
 		else:
 			self.draw_selected = self.draw_top + maxy / 2 - 1 # for status bar
 		self.clip_draw_selected()
@@ -1211,14 +1218,16 @@ class Mpcpy:
 		self.screen.getchar(0)
 
 	def view_scroll(self, inc):
+		scroll_off = self.screen.calc_scrolloff(SCROLL_OFF)
+
 		if inc > 0:
 			max = len(self.mpd.playlist)-1
 
-			if self.draw_top + SCROLL_OFF >= max:
+			if self.draw_top + scroll_off >= max:
 				return
 
 			self.draw_top += 1
-			y = self.draw_top + SCROLL_OFF;
+			y = self.draw_top + scroll_off;
 			if y >= self.draw_selected:
 				self.draw_selected = y
 				if self.draw_selected > max:
@@ -1227,7 +1236,7 @@ class Mpcpy:
 			if self.draw_top == 0:
 				return
 			self.draw_top -= 1
-			y = self.draw_top + self.screen.get_max_y() - 2 - SCROLL_OFF
+			y = self.draw_top + self.screen.get_max_y() - 2 - scroll_off
 			if y < self.draw_selected:
 				self.draw_selected = y
 
