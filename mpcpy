@@ -264,6 +264,7 @@ class Mpd:
 		self.port = port
 		self.bufsock = bufsock
 		self.playlist = []
+		self.outputs = []
 		self.current = {}
 		self.statusdict = {}
 		self.xfade = 5
@@ -274,6 +275,7 @@ class Mpd:
 		self.update_current()
 		self.update_statusdict()
 		self.update_playlist_full()
+		self.update_outputs()
 
 	def hoststr(self):
 		return hoststr(self.host, self.port)
@@ -402,6 +404,16 @@ class Mpd:
 			print >>sys.stderr, "new playlist:"
 			for track in self.playlist:
 				print >>sys.stderr, "  .id={0} .pos={1} .file={2}".format(track['Id'], track['Pos'], track['file'])
+
+	def update_outputs(self):
+		self.outputs = parse_keyval(self.cmd('outputs'))
+
+	def output_toggle(self, i):
+		output = self.outputs[i]
+		if int(output['outputenabled']):
+			self.cmd('disableoutput "{0}"'.format(i));
+		else:
+			self.cmd('enableoutput "{0}"'.format(i));
 
 	def play(self, i = -1):
 		if i != -1:
@@ -936,6 +948,8 @@ class Mpcpy:
 					self.mpd.update_current()
 				elif l == 'update':
 					self.screen.status("mpd update complete")
+				elif l == 'output':
+					self.mpd.update_outputs()
 
 				if old_idx != self.mpd.current_pos():
 					self.mpd_track_changed = True
