@@ -715,7 +715,12 @@ class Mpcpy:
 			return -1
 
 	def view_max(self):
-		return len(self.mpd.playlist)
+		if self.view_mode == VIEW_MODE_PLAYLIST:
+			return len(self.mpd.playlist)
+		if self.view_mode == VIEW_MODE_OUTPUTS:
+			return len(self.mpd.outputs)
+		return 0
+
 	def view_set(self, n, marklast = True):
 		if marklast:
 			self.lastmark()
