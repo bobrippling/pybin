@@ -825,7 +825,7 @@ class Mpcpy:
 
 	def create_mark(self):
 		ch = self.screen.getchar(0)
-		self.mark_add(ch, draw_selected)
+		self.mark_add(ch, self.draw_selected)
 
 		s = '%d' % self.draw_selected
 		try:
