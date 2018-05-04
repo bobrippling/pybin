@@ -1,6 +1,5 @@
 #!/usr/bin/env python2.6
 
-# TODO: output control
 # FIXME: move idle logic all into mpd
 
 import curses
@@ -116,6 +115,7 @@ KEY_DEFINITIONS = {
 	},
 
 	VIEW_MODE_OUTPUTS: {
+		'\n': lambda self: self.mpd.output_toggle(self.draw_selected),
 	}
 }
 
