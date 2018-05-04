@@ -214,8 +214,8 @@ class MPDException(Exception):
 	pass
 
 def create_mpd(screen):
-	host = os.getenv('MPD_HOST', 'localhost')
-	port = os.getenv('MPD_PORT', '6600')
+	host = os.getenv('MPD_HOST', '') or 'localhost'
+	port = os.getenv('MPD_PORT', '') or '6600'
 	if host.find("@") != -1:
 		parts = host.split("@", 1)
 		pw = parts[0]
