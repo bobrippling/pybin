@@ -416,7 +416,7 @@ class Mpd:
 	def stop(self):       self.cmd_noreply("stop")
 
 	def seek(self, pos):
-		idx = self.current_pos()
+		idx = self.mpd.current_pos()
 		if idx >= 0:
 			self.cmd_noreply("seek %d %d" % (idx, pos))
 
