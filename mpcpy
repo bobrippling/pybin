@@ -685,6 +685,7 @@ class Screen:
 class Mpcpy:
 	def __init__(self, mpd, screen):
 		self.draw_selected = 0
+		self.draw_selecteds = {}
 		self.draw_top = 0
 		self.draw_playing = -1
 		self.mpd = mpd
@@ -1095,7 +1096,9 @@ class Mpcpy:
 		self.screen.status("Couldn't find %s" % self.search_regex)
 
 	def set_view_mode(self, mode):
+		self.draw_selecteds[self.view_mode] = self.draw_selected
 		self.view_mode = mode
+		self.draw_selected = try_key(self.draw_selecteds, self.view_mode, 0)
 
 	def view_current(self):
 		self.lastmark()
