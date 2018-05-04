@@ -733,7 +733,6 @@ class Mpcpy:
 		self.draw_selected = 0
 		self.draw_selecteds = {}
 		self.draw_top = 0
-		self.draw_playing = -1
 		self.mpd = mpd
 		self.screen = screen
 		self.marks = {}
