@@ -1162,10 +1162,11 @@ class Mpcpy:
 		name = output['outputname']
 		enabled = int(output['outputenabled']) != 0
 
-		attr = curses.A_BOLD if enabled else 0
-
+		attr = 0
 		if self.draw_selected == i:
-			attr |= curses.color_pair(curses.COLOR_GREEN)
+			attr = curses.A_BOLD | curses.color_pair(curses.COLOR_GREEN)
+		elif enabled:
+			attr = curses.color_pair(curses.COLOR_BLUE)
 
 		self.screen.clrtoeol()
 		self.screen.addstr("Output {0}: {1}{2}\n".format(id, name, " (disabled)" if not enabled else ""), attr)
