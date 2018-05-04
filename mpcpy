@@ -1,7 +1,5 @@
 #!/usr/bin/env python2.6
 
-# FIXME: move idle logic all into mpd
-
 import curses
 import socket
 import sys, errno, os
@@ -352,6 +350,54 @@ class Mpd:
 		self.waiting_on_cmd = ''
 		lines = self.readlines(cmd)
 		self.check_noreply(lines)
+
+	def handle_input(self):
+		if self.waiting_on_cmd:
+			self.resolve_wait()
+			return []
+		else:
+			return self.handle_idle()
+
+	def handle_idle(self):
+		lines = self.idle_response()
+
+		events = []
+
+		for l in lines:
+			# database
+			# update
+			# stored_playlist
+			# mixer
+			# output
+			# sticker
+			# subscription
+			# message
+
+			if l.find('changed: ') == 0:
+				l = l[9:]
+
+				old_idx = self.current_pos()
+
+				if l == 'options':
+					# rzxyc options
+					self.update_statusdict()
+				elif l == 'playlist':
+					self.update_playlist_diff()
+					self.update_current() # need to update the 'Pos' of playing
+					events.append('playlist')
+				elif l == 'player' or l == 'mixer':
+					# play, pause, etc
+					self.update_statusdict()
+					self.update_current()
+				elif l == 'update':
+					events.append('update')
+				elif l == 'output':
+					self.update_outputs()
+
+				if old_idx != self.current_pos():
+					events.append('track')
+
+		return events
 
 	def update_statusdict(self):
 		statusdict = list_to_map(self.cmd("status"))
@@ -788,10 +834,14 @@ class Mpcpy:
 				raise e
 
 		if self.mpd.bufsock in ready[0]:
-			if self.mpd.waiting_on_cmd:
-				self.try_catch_mpd(lambda: self.mpd.resolve_wait())
-			else:
-				self.handle_idle()
+			events = self.try_catch_mpd(lambda: self.mpd.handle_input())
+			if events:
+				if 'playlist' in events:
+					self.clip_draw_selected()
+				if 'update' in events:
+					self.screen.status("mpd update complete")
+				if 'track' in events:
+					self.mpd_track_changed = True
 
 		if sys.stdin in ready[0]:
 			self.handle_keys()
@@ -904,7 +954,7 @@ class Mpcpy:
 
 	def try_catch_mpd(self, fn):
 		try:
-			fn()
+			return fn()
 		except MPDException as e:
 			self.screen.status("%s" % e, color=curses.A_BOLD | curses.color_pair(curses.COLOR_RED))
 
@@ -937,44 +987,6 @@ class Mpcpy:
 		elif len(possible) == 1:
 			self.handle_key(key_defs[possible[0]])
 			self.normal_input = ''
-
-	def handle_idle(self):
-		# FIXME: this belongs in mpd
-		lines = self.mpd.idle_response()
-
-		for l in lines:
-			# database
-			# update
-			# stored_playlist
-			# mixer
-			# output
-			# sticker
-			# subscription
-			# message
-
-			if l.find('changed: ') == 0:
-				l = l[9:]
-
-				old_idx = self.mpd.current_pos()
-
-				if l == 'options':
-					# rzxyc options
-					self.mpd.update_statusdict()
-				elif l == 'playlist':
-					self.mpd.update_playlist_diff()
-					self.mpd.update_current() # need to update the 'Pos' of playing
-					self.clip_draw_selected()
-				elif l == 'player' or l == 'mixer':
-					# play, pause, etc
-					self.mpd.update_statusdict()
-					self.mpd.update_current()
-				elif l == 'update':
-					self.screen.status("mpd update complete")
-				elif l == 'output':
-					self.mpd.update_outputs()
-
-				if old_idx != self.mpd.current_pos():
-					self.mpd_track_changed = True
 
 	def queue(self):
 		go = False
