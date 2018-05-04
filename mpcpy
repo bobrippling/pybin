@@ -729,9 +729,17 @@ class Screen:
 				self.stdscr.addch(y, x, c, attr)
 
 class Mpcpy:
+	class DrawState:
+		def __init__(self, mpcpy):
+			self.sel = mpcpy.draw_selected
+			self.top = mpcpy.draw_top
+		def restore(self, mpcpy):
+			mpcpy.draw_selected = self.sel
+			mpcpy.draw_top = self.top
+
 	def __init__(self, mpd, screen):
 		self.draw_selected = 0
-		self.draw_selecteds = {}
+		self.draw_saved = {}
 		self.draw_top = 0
 		self.mpd = mpd
 		self.screen = screen
@@ -1107,9 +1115,10 @@ class Mpcpy:
 		self.screen.status("Couldn't find %s" % self.search_regex)
 
 	def set_view_mode(self, mode):
-		self.draw_selecteds[self.view_mode] = self.draw_selected
+		self.draw_saved[self.view_mode] = Mpcpy.DrawState(self)
 		self.view_mode = mode
-		self.draw_selected = try_key(self.draw_selecteds, self.view_mode, 0)
+		if self.view_mode in self.draw_saved:
+			self.draw_saved[self.view_mode].restore(self)
 
 	def view_current(self):
 		self.lastmark()
