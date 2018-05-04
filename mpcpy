@@ -22,6 +22,10 @@ SPACE_ARTIST   = 5
 SPACE_TITLE    = 8
 SPACE_ALBUM    = 4
 
+# view modes
+VIEW_MODE_PLAYLIST = 'playlist'
+VIEW_MODE_OUTPUTS = 'outputs'
+
 debug_plchanges = False
 
 from BufRead import BufRead
@@ -34,75 +38,85 @@ def default_set(map, key, val):
 		map[key] = val
 
 KEY_DEFINITIONS = {
-	'q': lambda self: self.exit(),
-	'j': lambda self: self.view_set(self.draw_selected + 1),
-	'k': lambda self: self.view_set(self.draw_selected - 1),
-	ctrl_and('d'): lambda self: self.view_set(self.draw_selected + self.screen.get_max_y() / 2),
-	ctrl_and('u'): lambda self: self.view_set(self.draw_selected - self.screen.get_max_y() / 2),
-	ctrl_and('f'): lambda self: self.view_set(self.draw_selected + self.screen.get_max_y()),
-	ctrl_and('b'): lambda self: self.view_set(self.draw_selected - self.screen.get_max_y()),
-	ctrl_and('e'): lambda self: self.view_scroll(+1),
-	ctrl_and('y'): lambda self: self.view_scroll(-1),
+	'': {
+		'q': lambda self: self.exit(),
+		'j': lambda self: self.view_set(self.draw_selected + 1),
+		'k': lambda self: self.view_set(self.draw_selected - 1),
+		ctrl_and('d'): lambda self: self.view_set(self.draw_selected + self.screen.get_max_y() / 2),
+		ctrl_and('u'): lambda self: self.view_set(self.draw_selected - self.screen.get_max_y() / 2),
+		ctrl_and('f'): lambda self: self.view_set(self.draw_selected + self.screen.get_max_y()),
+		ctrl_and('b'): lambda self: self.view_set(self.draw_selected - self.screen.get_max_y()),
+		ctrl_and('e'): lambda self: self.view_scroll(+1),
+		ctrl_and('y'): lambda self: self.view_scroll(-1),
 
-	'!': lambda self: self.shellout(),
+		'!': lambda self: self.shellout(),
 
-	'gg': lambda self: self.view_set(0),
-	'gs': lambda self: self.seek(),
-	'gS': lambda self: self.playlist_save(),
-	'gL': lambda self: self.playlist_load(),
-	'gC': lambda self: self.playlist_clear(),
+		'gg': lambda self: self.view_set(0),
+		'G': lambda self: self.view_set(self.view_max() - 1),
 
-	'"': lambda self: self.goto_mark(),
+		'gs': lambda self: self.seek(),
+		'gS': lambda self: self.playlist_save(),
+		'gL': lambda self: self.playlist_load(),
+		'gC': lambda self: self.playlist_clear(),
 
-	'm': lambda self: self.create_mark(),
+		'H': lambda self: self.screen_position(-1),
+		'L': lambda self: self.screen_position(0),
+		'M': lambda self: self.screen_position(+1),
 
-	'i': lambda self: self.info(self.mpd.playlist[self.draw_selected]),
+		'p':  lambda self: self.mpd.toggle(),
+		's':  lambda self: self.mpd.stop(),
 
-	'G': lambda self: self.view_set(self.view_max() - 1),
+		'>': lambda self: self.mpd.next(),
+		'<': lambda self: self.mpd.prev(),
 
-	'H': lambda self: self.screen_position(-1),
-	'L': lambda self: self.screen_position(0),
-	'M': lambda self: self.screen_position(+1),
+		'r': lambda self: self.mpd.repeat(),
+		'z': lambda self: self.mpd.random(),
+		'y': lambda self: self.mpd.single(),
+		'c': lambda self: self.mpd.consume(),
+		'x': lambda self: self.mpd.crossfade(),
 
-	'd':  lambda self: self.playlist_remove_current(),
-	'p':  lambda self: self.mpd.toggle(),
-	's':  lambda self: self.mpd.stop(),
-	'\n': lambda self: self.mpd.play(self.draw_selected),
+		'X': lambda self: self.set_xfade(),
 
-	'Q': lambda self: self.queue(),
+		'1': lambda self: self.set_view_mode(VIEW_MODE_PLAYLIST),
+		'2': lambda self: self.set_view_mode(VIEW_MODE_OUTPUTS),
 
-	'>': lambda self: self.mpd.next(),
-	'<': lambda self: self.mpd.prev(),
+		'P': lambda self: self.password(),
+		'u': lambda self: self.mpd.update(),
 
-	'r': lambda self: self.mpd.repeat(),
-	'z': lambda self: self.mpd.random(),
-	'y': lambda self: self.mpd.single(),
-	'c': lambda self: self.mpd.consume(),
-	'x': lambda self: self.mpd.crossfade(),
+		# 12 = "\f" = ctrl+L
+		chr(12): lambda self: self.refresh(),
+	},
 
-	'X': lambda self: self.set_xfade(),
+	VIEW_MODE_PLAYLIST: {
+		'"': lambda self: self.goto_mark(),
 
-	'W': lambda self: self.shift_tracks('up'),
-	'w': lambda self: self.shift_tracks('down'),
+		'm': lambda self: self.create_mark(),
 
-	' ': lambda self: self.toggle_selection(),
+		'i': lambda self: self.info(self.mpd.playlist[self.draw_selected]),
 
-	'/': lambda self: self.search('forwards'),
-	'?': lambda self: self.search('backwards'),
-	'n': lambda self: self.search('next'),
-	'N': lambda self: self.search('prev'),
+		'd':  lambda self: self.playlist_remove_current(),
+		'\n': lambda self: self.mpd.play(self.draw_selected),
 
-	'o': lambda self: self.view_current(),
+		'Q': lambda self: self.queue(),
 
-	'P': lambda self: self.password(),
+		'W': lambda self: self.shift_tracks('up'),
+		'w': lambda self: self.shift_tracks('down'),
 
-	'u': lambda self: self.mpd.update(),
+		' ': lambda self: self.toggle_selection(),
 
-	# 12 = "\f" = ctrl+L
-	chr(12): lambda self: self.refresh(),
+		'/': lambda self: self.search('forwards'),
+		'?': lambda self: self.search('backwards'),
+		'n': lambda self: self.search('next'),
+		'N': lambda self: self.search('prev'),
 
-	'{': lambda self: self.view_move_paragraph(-1),
-	'}': lambda self: self.view_move_paragraph(+1),
+		'o': lambda self: self.view_current(),
+
+		'{': lambda self: self.view_move_paragraph(-1),
+		'}': lambda self: self.view_move_paragraph(+1),
+	},
+
+	VIEW_MODE_OUTPUTS: {
+	}
 }
 
 def list_to_map(lst):
@@ -686,6 +700,7 @@ class Mpcpy:
 		self.search_str = ''
 		self.normal_input = ''
 		self.selection = {}
+		self.view_mode = VIEW_MODE_PLAYLIST
 
 	def lastmark(self):
 		self.mark_add(ord("'"), self.draw_selected)
@@ -887,8 +902,8 @@ class Mpcpy:
 		except MPDException as e:
 			self.screen.status("%s" % e, color=curses.A_BOLD | curses.color_pair(curses.COLOR_RED))
 
-	def handle_key(self, keystr):
-		self.try_catch_mpd(lambda: KEY_DEFINITIONS[keystr](self))
+	def handle_key(self, keydef):
+		self.try_catch_mpd(lambda: keydef(self))
 
 	def handle_keys(self):
 		maxy = self.screen.get_max_y()
@@ -904,7 +919,9 @@ class Mpcpy:
 		self.normal_input += as_char
 		possible = []
 
-		for cmd in KEY_DEFINITIONS:
+		key_defs = dict(KEY_DEFINITIONS[''].items() + KEY_DEFINITIONS[self.view_mode].items())
+
+		for cmd in key_defs:
 			if self.normal_input == cmd[:len(self.normal_input)]:
 				possible.append(cmd)
 
@@ -912,7 +929,7 @@ class Mpcpy:
 			self.screen.status("unknown key %d" % ch)
 			self.normal_input = ''
 		elif len(possible) == 1:
-			self.handle_key(possible[0])
+			self.handle_key(key_defs[possible[0]])
 			self.normal_input = ''
 
 	def handle_idle(self):
@@ -1072,6 +1089,9 @@ class Mpcpy:
 					return
 		self.screen.status("Couldn't find %s" % self.search_regex)
 
+	def set_view_mode(self, mode):
+		self.view_mode = mode
+
 	def view_current(self):
 		self.lastmark()
 		curidx = try_key(self.mpd.current, 'Pos', -1)
@@ -1094,6 +1114,37 @@ class Mpcpy:
 		self.mpd.close()
 
 	def draw_line(self, i, max_x):
+		if self.view_mode == VIEW_MODE_PLAYLIST:
+			self.draw_line_playlist(i, max_x)
+		elif self.view_mode == VIEW_MODE_OUTPUTS:
+			self.draw_line_output(i, max_x)
+
+	def draw_line_output(self, i, max_x):
+		if i >= len(self.mpd.outputs):
+			self.screen.addstr("~")
+			self.screen.clrtoeol()
+			return
+
+		output = self.mpd.outputs[i]
+
+		id = output['outputid']
+		name = output['outputname']
+		enabled = int(output['outputenabled']) != 0
+
+		attr = curses.A_BOLD if enabled else 0
+
+		if self.draw_selected == i:
+			attr |= curses.color_pair(curses.COLOR_GREEN)
+
+		self.screen.clrtoeol()
+		self.screen.addstr("Output {0}: {1}{2}\n".format(id, name, " (disabled)" if not enabled else ""), attr)
+
+	def draw_line_playlist(self, i, max_x):
+		if i >= len(self.mpd.playlist):
+			self.screen.addstr("~")
+			self.screen.clrtoeol()
+			return
+
 		entry = self.mpd.playlist[i]
 
 		if i == self.draw_selected:
@@ -1146,13 +1197,7 @@ class Mpcpy:
 		initial_i = self.draw_top
 		for y, i in zip(range(STATUS_HEIGHT, max_y), range(initial_i, initial_i + max_y)):
 			self.screen.move(y, 0)
-
-			if i < len(self.mpd.playlist):
-				self.draw_line(i, max_x);
-			else:
-				self.screen.addstr("~")
-				self.screen.clrtoeol()
-
+			self.draw_line(i, max_x)
 		self.screen.move(0, 0)
 
 	def seek(self):
