@@ -11,6 +11,17 @@ import time
 import string
 import select
 
+# const
+STATUS_HEIGHT  = 2
+SCROLL_OFF     = 10
+CURSES_TIMEOUT = 250
+
+# relative differences
+SPACE_TIME     = 2
+SPACE_ARTIST   = 5
+SPACE_TITLE    = 8
+SPACE_ALBUM    = 4
+
 debug_plchanges = False
 
 from BufRead import BufRead
@@ -93,17 +104,6 @@ KEY_DEFINITIONS = {
 	'{': lambda self: self.view_move_paragraph(-1),
 	'}': lambda self: self.view_move_paragraph(+1),
 }
-
-# const
-STATUS_HEIGHT  = 2
-SCROLL_OFF     = 10
-CURSES_TIMEOUT = 250
-
-# relative differences
-SPACE_TIME     = 2
-SPACE_ARTIST   = 5
-SPACE_TITLE    = 8
-SPACE_ALBUM    = 4
 
 def list_to_map(lst):
 	curmap = {}
