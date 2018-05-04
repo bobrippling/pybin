@@ -1119,6 +1119,9 @@ class Mpcpy:
 		self.view_mode = mode
 		if self.view_mode in self.draw_saved:
 			self.draw_saved[self.view_mode].restore(self)
+		else:
+			self.draw_selected = 0
+			self.draw_top = 0
 
 	def view_current(self):
 		self.lastmark()
