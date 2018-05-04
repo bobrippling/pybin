@@ -58,7 +58,7 @@ KEY_DEFINITIONS = {
 
 	'i': lambda self: self.info(self.mpd.playlist[self.draw_selected]),
 
-	'G': lambda self: self.view_set(len(self.mpd.playlist) - 1),
+	'G': lambda self: self.view_set(self.view_max() - 1),
 
 	'H': lambda self: self.screen_position(-1),
 	'L': lambda self: self.screen_position(0),
@@ -688,6 +688,8 @@ class Mpcpy:
 		except:
 			return -1
 
+	def view_max(self):
+		return len(self.mpd.playlist)
 	def view_set(self, n, marklast = True):
 		if marklast:
 			self.lastmark()
@@ -697,8 +699,8 @@ class Mpcpy:
 
 		if n < 0:
 			n = 0
-		elif n >= len(self.mpd.playlist):
-			n = len(self.mpd.playlist) - 1
+		elif n >= self.view_max():
+			n = self.view_max() - 1
 
 		self.draw_selected = n
 
@@ -717,8 +719,8 @@ class Mpcpy:
 			self.draw_top = dtop
 		elif n > limit_bot:
 			dtop = n - maxy + scroll_off
-			if dtop >= len(self.mpd.playlist):
-				dtop = len(self.mpd.playlist)
+			if dtop >= self.view_max():
+				dtop = self.view_max()
 			self.draw_top = dtop
 
 		if dtop is not None:
@@ -810,7 +812,7 @@ class Mpcpy:
 		self.screen.clrtoeol()
 		self.screen.addstr("%s showing %d/%d, %s: %s %s/%s" % (
 			statusstr(self.mpd.statusdict),
-			self.draw_selected + 1, len(self.mpd.playlist),
+			self.draw_selected + 1, self.view_max(),
 			self.mpd.statusdict['state'], current_song, format_time(time_now), format_time(time_fin)))
 
 		self.screen.set_yx(oldyx)
@@ -1224,7 +1226,7 @@ class Mpcpy:
 		scroll_off = self.screen.calc_scrolloff(SCROLL_OFF)
 
 		if inc > 0:
-			max = len(self.mpd.playlist)-1
+			max = self.view_max()-1
 
 			if self.draw_top + scroll_off >= max:
 				return
