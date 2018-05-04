@@ -280,7 +280,6 @@ class Mpd:
 	def hoststr(self):
 		return hoststr(self.host, self.port)
 
-
 	def close(self):
 		self.bufsock.close()
 
