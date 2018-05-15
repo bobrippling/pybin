@@ -679,9 +679,6 @@ class Screen:
 			elif c == 127 or c == 263 or c == ord('\b'):
 				if len(ret):
 					ret = ret[:len(ret)-1]
-				else:
-					ret = None
-					break
 
 			elif chrd in string.printable:
 				ret += chrd
