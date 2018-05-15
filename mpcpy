@@ -644,7 +644,11 @@ class Screen:
 
 		return ret
 
-	def prompt(self, str, pw = 0, autocomplete = []):
+	def prompt(self, str, **kwargs):
+		pw = try_key(kwargs, "pw", False)
+		autocomplete = try_key(kwargs, "autocomplete", [])
+		allow_empty = try_key(kwargs, "allow_empty", False)
+
 		self.status(str)
 		self.stdscr.move(1, len(str))
 
@@ -688,7 +692,9 @@ class Screen:
 			self.stdscr.refresh()
 
 		self.stdscr.timeout(CURSES_TIMEOUT)
-		return ret
+		if allow_empty and len(ret) == 0:
+			return ret;
+		return ret or None
 
 	def confirm(self, prompt):
 		self.status(prompt)
@@ -1018,7 +1024,7 @@ class Mpcpy:
 
 	def set_xfade(self):
 		s = self.screen.prompt('xfade: ')
-		if s != None and len(s):
+		if s != None:
 			try:
 				n = int(s)
 			except:
@@ -1067,7 +1073,7 @@ class Mpcpy:
 
 	def prompt_search(self, reverse):
 		self.search_str = self.screen.prompt('?' if reverse else '/')
-		if self.search_str is None or len(self.search_str) == 0:
+		if self.search_str is None:
 			return None
 		return re.compile(".*" + self.search_str + ".*", re.IGNORECASE)
 
@@ -1235,7 +1241,7 @@ class Mpcpy:
 
 	def seek(self):
 		spos = self.screen.prompt('seek to: ')
-		if spos == None or len(spos) == 0:
+		if spos == None:
 			return
 		try:
 			if spos.find(':'):
@@ -1278,7 +1284,7 @@ class Mpcpy:
 			self.mpd.remove(pos)
 
 	def password(self):
-		pw = self.screen.prompt('password: ', pw=1)
+		pw = self.screen.prompt('password: ', pw=True)
 		if pw == None or len(pw) == 0:
 			return
 		self.mpd.attempt_password(pw)
@@ -1337,7 +1343,7 @@ class Mpcpy:
 				self.draw_selected = y
 
 	def shellout(self):
-		cmd = self.screen.prompt('!')
+		cmd = self.screen.prompt('!', allow_empty=True)
 		if cmd is None:
 			return
 		if cmd == '':
