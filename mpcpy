@@ -184,6 +184,27 @@ def statusstr(statusdict):
 			'x' if statusdict['xfade'  ] > 0 else '-',
 			'c' if statusdict['consume'] > 0 else '-')
 
+def common_prefix(strings, seed):
+	common = seed
+	i = len(common)
+	while True:
+		if i >= len(strings[0]):
+			break
+		ch = strings[0][i]
+
+		match = True
+		for other in strings:
+			if i >= len(other) or other[i] != ch:
+				match = False
+				break
+
+		if not match:
+			break
+
+		common += ch
+		i += 1
+	return common
+
 def autocomplete_do(all, str):
 	str_len = len(str)
 	chosen = []
@@ -195,26 +216,10 @@ def autocomplete_do(all, str):
 	if len(chosen) == 1:
 		return chosen[0]
 
-	i = str_len
-	try:
-		lengthening = True
-		while lengthening:
-			ch = chosen[0][i + 1]
-
-			for j in chosen:
-				if j[i + 1] != ch:
-					lengthening = False
-					break
-
-			if lengthening:
-				i += 1
-	except:
-		pass # hit the end of one
-
-	try:
-		return chosen[0][:i]
-	except:
+	if len(chosen) == 0:
 		return str
+
+	return common_prefix(chosen, str)
 
 # ----------------------------------------------------
 # socket/mpd code
