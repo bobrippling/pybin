@@ -677,7 +677,7 @@ class Screen:
 				ret = None
 				break
 
-			elif as_int == ctrl_and('u'):
+			elif as_char == ctrl_and('u'):
 				ret = ''
 
 			elif as_int == 127 or as_int == 263 or as_int == ord('\b'):
