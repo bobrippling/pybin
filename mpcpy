@@ -658,34 +658,34 @@ class Screen:
 
 		ret = ''
 		while True:
-			c = self.stdscr.getch()
+			as_int = self.stdscr.getch()
 
 			try:
-				chrd = chr(c)
+				as_char = chr(as_int)
 			except:
-				chrd = ''
+				as_char = ''
 
-			if c == ord('\n'):
+			if as_int == ord('\n'):
 				break
 
-			elif c == ord('\t') and len(autocomplete):
+			elif as_int == ord('\t') and len(autocomplete):
 				autoed = autocomplete_do(autocomplete, ret)
 				if autoed != None:
 					ret = autoed
 
-			elif c == 033 or c == 31:
+			elif as_int == 033 or as_int == 31:
 				ret = None
 				break
 
-			elif c == ctrl_and('u'):
+			elif as_int == ctrl_and('u'):
 				ret = ''
 
-			elif c == 127 or c == 263 or c == ord('\b'):
+			elif as_int == 127 or as_int == 263 or as_int == ord('\b'):
 				if len(ret):
 					ret = ret[:len(ret)-1]
 
-			elif chrd in string.printable:
-				ret += chrd
+			elif as_char in string.printable:
+				ret += as_char
 
 			self.stdscr.move(y, x)
 			self.stdscr.addstr(('*' * len(ret)) if pw else ret)
