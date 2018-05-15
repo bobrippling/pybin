@@ -185,7 +185,6 @@ def statusstr(statusdict):
 			'c' if statusdict['consume'] > 0 else '-')
 
 def autocomplete_do(all, str):
-	min_len = 999
 	str_len = len(str)
 	chosen = []
 
