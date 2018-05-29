@@ -12,7 +12,7 @@ class BufRead:
 	def __init__(self, f):
 		self.file = f
 		self.buf = ''
-
+                #f.setblocking(0)
 
 	def fileno(self):
 		return self.file.fileno()
