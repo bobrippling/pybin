@@ -491,9 +491,9 @@ class Mpd:
 	def stop(self):       self.cmd_noreply("stop")
 
 	def seek(self, pos):
-		idx = self.mpd.current_pos()
+		idx = self.current_pos()
 		if idx >= 0:
-			self.cmd_noreply("seek %d %d" % (idx, pos))
+			self.cmd_noreply("seek {0} {1}".format(idx, pos))
 
 	def toggle(self): self.stop() if self.statusdict['state'] == 'play' else self.play()
 	def remove(self, n): self.cmd_noreply("delete %d" % n)
