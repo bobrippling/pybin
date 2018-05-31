@@ -787,7 +787,6 @@ class Mpcpy:
 		if marklast:
 			self.lastmark()
 
-		n = int(n)
 		maxy = self.screen.get_max_y() - 2
 
 		if n < 0:
