@@ -1192,12 +1192,12 @@ class Mpcpy:
 		entry = self.mpd.playlist[i]
 
 		if i == self.draw_selected:
-			if i == self.mpd.current_pos():
+			if entry['Pos'] == self.mpd.current_pos():
 				# selected _and_ playing
 				attr = curses.A_BOLD | curses.color_pair(curses.COLOR_YELLOW)
 			else:
 				attr = curses.A_BOLD | curses.color_pair(curses.COLOR_GREEN)
-		elif i == self.mpd.current_pos():
+		elif entry['Pos'] == self.mpd.current_pos():
 			attr = curses.A_BOLD | curses.color_pair(curses.COLOR_RED)
 		elif entry['Id'] in self.selection:
 			attr = curses.color_pair(curses.COLOR_BLUE)
