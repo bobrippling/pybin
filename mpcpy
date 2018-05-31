@@ -1271,6 +1271,8 @@ class Mpcpy:
 			time_now, _ = self.get_mpd_times()
 			time = time_now + time * int(relative + "1")
 
+		if time < 0:
+			time = 0
 		self.mpd.seek(time)
 
 	def playlist_load(self):
