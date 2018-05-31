@@ -649,15 +649,18 @@ class Screen:
 		autocomplete = try_key(kwargs, "autocomplete", [])
 		allow_empty = try_key(kwargs, "allow_empty", False)
 
-		self.status(str)
-		self.stdscr.move(1, len(str))
-
 		self.stdscr.timeout(-1)
+		self.status(str)
 
-		y, x = self.stdscr.getyx()
-
+		y, x = 1, len(str)
 		ret = ''
+
 		while True:
+			self.stdscr.move(y, x)
+			self.stdscr.addstr(('*' * len(ret)) if pw else ret)
+			self.stdscr.clrtoeol()
+			self.stdscr.move(y, x + len(ret))
+
 			as_int = self.stdscr.getch()
 
 			try:
@@ -686,10 +689,6 @@ class Screen:
 
 			elif as_char in string.printable:
 				ret += as_char
-
-			self.stdscr.move(y, x)
-			self.stdscr.addstr(('*' * len(ret)) if pw else ret)
-			self.stdscr.refresh()
 
 		self.stdscr.timeout(CURSES_TIMEOUT)
 		if allow_empty and len(ret) == 0:
