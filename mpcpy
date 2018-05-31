@@ -933,7 +933,7 @@ class Mpcpy:
 		s = '%d' % self.draw_selected
 		try:
 			s = self.mpd.playlist[self.draw_selected]['Title']
-		except:
+		except KeyError:
 			pass
 		self.screen.status("marked: %c => %s" % (ch, s))
 
