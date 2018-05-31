@@ -648,6 +648,7 @@ class Screen:
 		pw = try_key(kwargs, "pw", False)
 		autocomplete = try_key(kwargs, "autocomplete", [])
 		allow_empty = try_key(kwargs, "allow_empty", False)
+		format = try_key(kwargs, "format", "")
 
 		self.stdscr.timeout(-1)
 		self.status(str)
@@ -657,7 +658,7 @@ class Screen:
 
 		while True:
 			self.stdscr.move(y, x)
-			self.stdscr.addstr(('*' * len(ret)) if pw else ret)
+			self.stdscr.addstr(('*' * len(ret)) if pw else ret + " " + format)
 			self.stdscr.clrtoeol()
 			self.stdscr.move(y, x + len(ret))
 
