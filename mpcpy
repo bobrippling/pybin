@@ -140,10 +140,13 @@ def intify(map, keys):
 			map[k] = 0
 	return map
 
+def intify_playlist_entry(entry):
+	return intify(entry, ['Pos', 'Id'])
+
 def hoststr(host, port):
 	return "%s:%s" % (host, port)
 
-def parse_keyval(raw, custom_filter = lambda k, v: v):
+def parse_keyval(raw):
 	entries = []
 	curmap = {}
 	for line in raw:
@@ -152,7 +155,7 @@ def parse_keyval(raw, custom_filter = lambda k, v: v):
 			raise MPDException("no colon in line: \"%s\"" % line)
 
 		key = line[:colon]
-		val = custom_filter(key, line[colon+2:])
+		val = line[colon+2:]
 
 		if key in curmap:
 			entries.append(curmap)
@@ -166,12 +169,7 @@ def parse_keyval(raw, custom_filter = lambda k, v: v):
 	return entries
 
 def parse_playlist(raw):
-	def filter_val(key, val):
-		if key == 'Pos':
-			return int(val)
-		return val
-
-	return parse_keyval(raw, filter_val)
+	return map(intify_playlist_entry, parse_keyval(raw))
 
 def format_time(s):
 	n = int(s)
@@ -424,7 +422,7 @@ class Mpd:
 		self.statusdict = statusdict
 
 	def update_current(self):
-		self.current = list_to_map(self.cmd("currentsong"))
+		self.current = intify_playlist_entry(list_to_map(self.cmd("currentsong")))
 
 	def update_playlist_full(self):
 		self.playlist = parse_playlist(self.cmd("playlistinfo"))
