@@ -1245,9 +1245,14 @@ class Mpcpy:
 		self.screen.move(0, 0)
 
 	def seek(self):
-		spos = self.screen.prompt('seek to: ')
+		spos = self.screen.prompt('seek to: ', format='[+/-] [[hr:]min:]sec')
 		if spos == None:
 			return
+
+		relative = ''
+		if spos.startswith('+') or spos.startswith('-'):
+			relative = spos[0]
+			spos = spos[1:]
 
 		segments = spos.split(':')
 		if len(segments) > 3:
@@ -1261,6 +1266,10 @@ class Mpcpy:
 		except ValueError:
 			self.screen.status("invalid number")
 			return
+
+		if relative:
+			time_now, _ = self.get_mpd_times()
+			time = time_now + time * int(relative + "1")
 
 		self.mpd.seek(time)
 
