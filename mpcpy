@@ -1202,7 +1202,7 @@ class Mpcpy:
 				attr = curses.A_BOLD | curses.color_pair(curses.COLOR_GREEN)
 		elif i == self.mpd.current_pos():
 			attr = curses.A_BOLD | curses.color_pair(curses.COLOR_RED)
-		elif self.mpd.playlist[i]['Id'] in self.selection:
+		elif entry['Id'] in self.selection:
 			attr = curses.color_pair(curses.COLOR_BLUE)
 		else:
 			attr = curses.A_NORMAL
