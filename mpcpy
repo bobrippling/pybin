@@ -132,6 +132,14 @@ def list_to_map(lst):
 def try_key(dict, key, default = ''):
 	return dict[key] if key in dict.keys() else default
 
+def intify(map, keys):
+	for k in keys:
+		try:
+			map[k] = int(map[k])
+		except (ValueError, KeyError):
+			map[k] = 0
+	return map
+
 def hoststr(host, port):
 	return "%s:%s" % (host, port)
 
@@ -412,12 +420,7 @@ class Mpd:
 		default_set(statusdict, 'state', 'stop')
 		default_set(statusdict, 'time', '00:00')
 
-		for k in ['random', 'repeat', 'consume', 'xfade', 'single', 'volume', 'playlistlength']:
-			try:
-				statusdict[k] = int(statusdict[k])
-			except:
-				statusdict[k] = 0
-
+		statusdict = intify(statusdict, ['random', 'repeat', 'consume', 'xfade', 'single', 'volume', 'playlistlength'])
 		self.statusdict = statusdict
 
 	def update_current(self):
