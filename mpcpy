@@ -1248,21 +1248,21 @@ class Mpcpy:
 		spos = self.screen.prompt('seek to: ')
 		if spos == None:
 			return
-		try:
-			if spos.find(':'):
-				segments = spos.split(':')
-				if len(segments) > 3:
-					raise Exception("")
-				while len(segments) < 3:
-					segments.insert(0, 0)
-				pos = int(segments[2]) + int(segments[1]) * 60 + int(segments[0]) * 24 * 60
-			else:
-				pos = int(spos)
-		except:
-			self.screen.status("not a valid time")
+
+		segments = spos.split(':')
+		if len(segments) > 3:
+			self.screen.status("too many separators in time")
 			return
 
-		self.mpd.seek(pos)
+		while len(segments) < 3:
+			segments.insert(0, 0)
+		try:
+			time = int(segments[2]) + int(segments[1]) * 60 + int(segments[0]) * 24 * 60
+		except ValueError:
+			self.screen.status("invalid number")
+			return
+
+		self.mpd.seek(time)
 
 	def playlist_load(self):
 		playlists = sorted(self.mpd.get_playlists())
