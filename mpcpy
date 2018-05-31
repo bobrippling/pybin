@@ -895,14 +895,7 @@ class Mpcpy:
 		else:
 			current_song = "<unknown>"
 
-		if 'time' in self.mpd.statusdict.keys():
-			play_time = self.mpd.statusdict['time']
-		else:
-			play_time = '00:00'
-
-		times = play_time.split(':')
-		time_now = int(times[0]) + self.mpd_track_time
-		time_fin = int(times[1])
+		time_now, time_fin = self.get_mpd_times()
 
 		self.screen.move(0, 0)
 		self.screen.clrtoeol()
@@ -912,6 +905,18 @@ class Mpcpy:
 			self.mpd.statusdict['state'], current_song, format_time(time_now), format_time(time_fin)))
 
 		self.screen.set_yx(oldyx)
+
+	def get_mpd_times(self):
+		if 'time' in self.mpd.statusdict.keys():
+			play_time = self.mpd.statusdict['time']
+		else:
+			play_time = '00:00'
+
+		times = play_time.split(':')
+		time_now = int(times[0]) + self.mpd_track_time
+		time_fin = int(times[1])
+
+		return time_now, time_fin
 
 	def goto_mark(self):
 		ch = self.screen.getchar(0)
