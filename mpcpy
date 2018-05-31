@@ -868,7 +868,7 @@ class Mpcpy:
 		return True
 
 	def update_time(self):
-		self.draw_status(self.mpd_track_time)
+		self.draw_status()
 
 		now = time.time()
 		if now - self.mpd_track_time_last_check > 1:
@@ -883,7 +883,7 @@ class Mpcpy:
 				elif statusdict['state'] == 'stop':
 					self.mpd_track_time = 0
 
-	def draw_status(self, time_extra = 0):
+	def draw_status(self):
 		self.select_delay = 1
 
 		oldyx = self.screen.get_yx()
@@ -901,7 +901,7 @@ class Mpcpy:
 			play_time = '00:00'
 
 		times = play_time.split(':')
-		time_now = int(times[0]) + time_extra
+		time_now = int(times[0]) + self.mpd_track_time
 		time_fin = int(times[1])
 
 		self.screen.move(0, 0)
