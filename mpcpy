@@ -899,10 +899,13 @@ class Mpcpy:
 
 		self.screen.move(0, 0)
 		self.screen.clrtoeol()
-		self.screen.addstr("%s showing %d/%d, %s: %s %s/%s" % (
+		self.screen.addstr("%s showing %d/%d, %s: %s %s/%s %s%%" % (
 			statusstr(self.mpd.statusdict),
 			self.draw_selected + 1, self.view_max(),
-			self.mpd.statusdict['state'], current_song, format_time(time_now), format_time(time_fin)))
+			self.mpd.statusdict['state'],
+			current_song,
+			format_time(time_now), format_time(time_fin),
+			self.mpd.statusdict['volume']))
 
 		self.screen.set_yx(oldyx)
 
