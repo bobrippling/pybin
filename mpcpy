@@ -80,6 +80,9 @@ KEY_DEFINITIONS = {
 		'P': lambda self: self.password(),
 		'u': lambda self: self.mpd.update(),
 
+		'(': lambda self: self.mpd.adj_volume(-1),
+		')': lambda self: self.mpd.adj_volume(+1),
+
 		# 12 = "\f" = ctrl+L
 		chr(12): lambda self: self.refresh(),
 	},
@@ -547,7 +550,11 @@ class Mpd:
 			self.xfade = n
 			self.cmd_noreply("crossfade %d" % self.xfade)
 
-	def set_volume(self, v): self.cmd_noreply("setvol %d" % v)
+	def adj_volume(self, adj):
+		v = self.statusdict['volume'] + adj
+		if v > 100 or v < 0:
+			return
+		self.cmd_noreply("setvol %d" % v)
 
 	def get_playlists(self):
 		return map(lambda line: line[10:], filter(lambda line: line[:10] == 'playlist: ', self.cmd('lsinfo')))
