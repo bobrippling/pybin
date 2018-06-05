@@ -395,7 +395,9 @@ class Mpd:
 					self.update_playlist_diff()
 					self.update_current() # need to update the 'Pos' of playing
 					events.append('playlist')
-				elif l == 'player' or l == 'mixer':
+				elif l == 'mixer':
+					self.update_statusdict()
+				elif l == 'player':
 					# play, pause, etc
 					self.update_statusdict()
 					self.update_current()
