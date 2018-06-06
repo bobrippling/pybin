@@ -389,8 +389,6 @@ class Mpd:
 			if l.find('changed: ') == 0:
 				l = l[9:]
 
-				old_idx = self.current_pos()
-
 				if l == 'options':
 					# rzxyc options
 					self.update_statusdict()
@@ -408,9 +406,6 @@ class Mpd:
 					events.append('update')
 				elif l == 'output':
 					self.update_outputs()
-
-				if old_idx != self.current_pos():
-					events.append('track')
 
 		return events
 
@@ -765,7 +760,7 @@ class Mpcpy:
 		self.mpd_track_time = 0
 		self.select_delay = 0
 		self.should_exit = False
-		self.mpd_track_changed = False
+		self.mpd_track_pos = -1
 		self.search_rev = 1
 		self.search_regex = None
 		self.search_str = ''
@@ -863,8 +858,6 @@ class Mpcpy:
 					self.clip_draw_selected()
 				if 'update' in events:
 					self.screen.status("mpd update complete")
-				if 'track' in events:
-					self.mpd_track_changed = True
 
 		if sys.stdin in ready[0]:
 			self.handle_keys()
@@ -886,8 +879,8 @@ class Mpcpy:
 			if 'state' in statusdict.keys():
 				if statusdict['state'] == 'play':
 					self.mpd_track_time += 1
-					if self.mpd_track_changed:
-						self.mpd_track_changed = False
+					if self.mpd.current_pos() != self.mpd_track_pos:
+						self.mpd_track_pos = self.mpd.current_pos()
 						self.mpd_track_time = 0
 				elif statusdict['state'] == 'stop':
 					self.mpd_track_time = 0
