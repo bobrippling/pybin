@@ -85,6 +85,7 @@ KEY_DEFINITIONS = {
 
 		# 12 = "\f" = ctrl+L
 		chr(12): lambda self: self.refresh(),
+		ctrl_and('['): lambda self: self.escape(),
 	},
 
 	VIEW_MODE_PLAYLIST: {
@@ -95,7 +96,10 @@ KEY_DEFINITIONS = {
 		'i': lambda self: self.info(self.mpd.playlist[self.draw_selected]),
 
 		'd':  lambda self: self.playlist_remove_current(),
-		'\n': lambda self: self.mpd.play(self.draw_selected),
+		'\n': lambda self: self.confirm(),
+
+		'f': lambda self: self.seek(+1),
+		'b': lambda self: self.seek(-1),
 
 		'Q': lambda self: self.queue(),
 
@@ -769,6 +773,7 @@ class Mpcpy:
 		self.normal_input = ''
 		self.selection = {}
 		self.view_mode = VIEW_MODE_PLAYLIST
+		self.interactive_seek = None
 
 	def lastmark(self):
 		self.mark_add(ord("'"), self.draw_selected)
@@ -912,7 +917,31 @@ class Mpcpy:
 			format_time(time_now), format_time(time_fin),
 			self.mpd.statusdict['volume']))
 
+		if self.interactive_seek is not None:
+			self.draw_interactive_seek(time_fin)
+
 		self.screen.set_yx(oldyx)
+
+	def draw_interactive_seek(self, time_fin):
+		self.screen.set_yx((1, 0))
+		max_y, max_x = self.screen.get_max_yx()
+
+		max_x -= 25 # length("seek: [>] (ESC to cancel)")
+
+		percent = float(self.interactive_seek) / time_fin
+		before = int(percent * max_x)
+		after = int((1 - percent) * max_x)
+
+		while before + after < max_x:
+			after += 1
+
+		self.screen.addstr(
+				"seek: ["
+				+ ("=" * before)
+				+ ">"
+				+ ("-" * after)
+				+ "] (ESC to cancel)",
+				curses.A_BOLD)
 
 	def get_mpd_times(self):
 		if 'time' in self.mpd.statusdict.keys():
@@ -1252,7 +1281,32 @@ class Mpcpy:
 			self.draw_line(i, max_x)
 		self.screen.set_yx((0, 0))
 
-	def seek(self):
+	def seek(self, interactive_dir = None):
+		if interactive_dir is None:
+			if self.interactive_seek is not None:
+				self.interactive_seek = None
+			return self.seek_prompt()
+
+		time_now, time_fin = self.get_mpd_times()
+		if time_fin == 0:
+			self.screen.status("no track playing")
+			return
+
+		if self.interactive_seek is None:
+			self.interactive_seek = time_now
+
+		self.interactive_seek += interactive_dir * 5
+		if self.interactive_seek < 0:
+			self.interactive_seek = 0
+		elif self.interactive_seek > time_fin:
+			self.interactive_seek = time_fin
+
+	def seek_confirm(self):
+		self.mpd.seek(self.interactive_seek)
+		self.screen.status("seeked to %s" % format_time(self.interactive_seek))
+		self.interactive_seek = None
+
+	def seek_prompt(self):
 		spos = self.screen.prompt('seek to: ', format='[+/-] [[hr:]min:]sec')
 		if spos == None:
 			return
@@ -1282,6 +1336,17 @@ class Mpcpy:
 		if time < 0:
 			time = 0
 		self.mpd.seek(time)
+
+	def confirm(self):
+		if self.interactive_seek is not None:
+			self.seek_confirm()
+		else:
+			self.mpd.play(self.draw_selected)
+
+	def escape(self):
+		if self.interactive_seek is not None:
+			self.interactive_seek = None
+			self.screen.status("cancelled seek")
 
 	def playlist_load(self):
 		playlists = sorted(self.mpd.get_playlists())
