@@ -833,13 +833,17 @@ class Mpcpy:
 		i = self.draw_selected
 		curtrack = self.mpd.playlist[i]
 
-		while i >= 0 and i < len(self.mpd.playlist):
+		while True:
 			i += direction
+			if i not in range(0, len(self.mpd.playlist)):
+				break
+
 			next = self.mpd.playlist[i]
 			if try_key(next, 'Artist') != try_key(curtrack, 'Artist'):
 				break
 
-		self.view_set(i)
+		if i in range(0, len(self.mpd.playlist)):
+			self.view_set(i)
 
 	def exit(self):
 		self.should_exit = True
