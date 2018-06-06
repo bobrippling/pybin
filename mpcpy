@@ -28,7 +28,7 @@ debug_plchanges = False
 from BufRead import BufRead
 
 def ctrl_and(n):
-	return chr(ord(n) - ord('a') + 1)
+	return chr(ord(n) & 0o37)
 
 def default_set(map, key, val):
 	if key not in map.keys():
