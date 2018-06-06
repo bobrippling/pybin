@@ -873,12 +873,13 @@ class Mpcpy:
 		self.draw_status()
 
 		now = time.time()
-		if now - self.mpd_track_time_last_check > 1:
+		diff = now - self.mpd_track_time_last_check
+		if diff > 1:
 			self.mpd_track_time_last_check = now
 			statusdict = self.mpd.statusdict
 			if 'state' in statusdict.keys():
 				if statusdict['state'] == 'play':
-					self.mpd_track_time += 1
+					self.mpd_track_time += diff
 					if self.mpd.current_pos() != self.mpd_track_pos:
 						self.mpd_track_pos = self.mpd.current_pos()
 						self.mpd_track_time = 0
