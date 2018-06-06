@@ -416,7 +416,11 @@ class Mpd:
 		default_set(statusdict, 'playlist', -1)
 		default_set(statusdict, 'playlistlength', -1)
 		default_set(statusdict, 'state', 'stop')
+
+		previous_time = try_key(statusdict, 'time', '00:00')
 		default_set(statusdict, 'time', '00:00')
+		if statusdict['time'] != previous_time:
+			self.mpd_track_time = 0
 
 		statusdict = intify(statusdict, ['random', 'repeat', 'consume', 'xfade', 'single', 'volume', 'playlistlength'])
 		self.statusdict = statusdict
