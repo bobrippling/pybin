@@ -622,9 +622,7 @@ class Screen:
 	def get_yx(self):
 		return self.stdscr.getyx()
 	def set_yx(self, yx):
-		self.move(yx[0], yx[1])
-	def move(self, y, x):
-		self.stdscr.move(y, x)
+		self.stdscr.move(yx[0], yx[1])
 	def clrtoeol(self):
 		self.stdscr.clrtoeol()
 	def addstr(self, s, *args):
@@ -900,7 +898,7 @@ class Mpcpy:
 
 		time_now, time_fin = self.get_mpd_times()
 
-		self.screen.move(0, 0)
+		self.screen.set_yx((0, 0))
 		self.screen.clrtoeol()
 		self.screen.addstr("%s showing %d/%d, %s: %s %s/%s %s%%" % (
 			statusstr(self.mpd.statusdict),
@@ -1246,9 +1244,9 @@ class Mpcpy:
 
 		initial_i = self.draw_top
 		for y, i in zip(range(STATUS_HEIGHT, max_y), range(initial_i, initial_i + max_y)):
-			self.screen.move(y, 0)
+			self.screen.set_yx((y, 0))
 			self.draw_line(i, max_x)
-		self.screen.move(0, 0)
+		self.screen.set_yx((0, 0))
 
 	def seek(self):
 		spos = self.screen.prompt('seek to: ', format='[+/-] [[hr:]min:]sec')
