@@ -932,7 +932,10 @@ class Mpcpy:
 
 		max_x -= 25 # length("seek: [>] (ESC to cancel)")
 
-		percent = float(self.interactive_seek) / time_fin
+		if time_fin == 0:
+			percent = 0
+		else:
+			percent = float(self.interactive_seek) / time_fin
 		before = int(percent * max_x)
 		after = int((1 - percent) * max_x)
 
