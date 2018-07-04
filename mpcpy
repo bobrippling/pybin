@@ -189,6 +189,14 @@ def format_time(s):
 		return "%02d:%02d:%02d" % (hr, mins, secs)
 	return "%02d:%02d" % (mins, secs)
 
+def flex_str_length(max_length, pre, flex, post):
+	used = len(pre) + len(flex) + len(post)
+	if used < max_length:
+		return len(flex)
+
+	remaining = max_length - used
+	return remaining
+
 def statusstr(statusdict):
 	return "[%s%s%s%s%s]" % (
 			'r' if statusdict['repeat' ] > 0 else '-',
@@ -911,15 +919,22 @@ class Mpcpy:
 
 		time_now, time_fin = self.get_mpd_times()
 
-		self.screen.set_yx((0, 0))
-		self.screen.clrtoeol()
-		self.screen.addstr("%s showing %d/%d, %s: %s %s/%s %s%%" % (
+		pre = "%s showing %d/%d, %s: " % (
 			statusstr(self.mpd.statusdict),
 			self.draw_selected + 1, self.view_max(),
-			self.mpd.statusdict['state'],
-			current_song,
+			self.mpd.statusdict['state']
+		)
+		post = " %s/%s %s%%" % (
 			format_time(time_now), format_time(time_fin),
-			self.mpd.statusdict['volume']))
+			self.mpd.statusdict['volume']
+		)
+		songlen = flex_str_length(self.screen.get_max_yx()[1], pre, current_song, post)
+
+		self.screen.set_yx((0, 0))
+		self.screen.clrtoeol()
+		self.screen.addstr(pre)
+		self.screen.addstr(current_song[:songlen])
+		self.screen.addstr(post)
 
 		if self.interactive_seek is not None:
 			self.draw_interactive_seek(time_fin)
