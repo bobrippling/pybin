@@ -933,7 +933,7 @@ class Mpcpy:
 		self.screen.set_yx((0, 0))
 		self.screen.clrtoeol()
 		self.screen.addstr(pre)
-		self.screen.addstr(current_song[:songlen])
+		self.screen.addstr(current_song[:songlen], curses.A_BOLD)
 		self.screen.addstr(post)
 
 		if self.interactive_seek is not None:
