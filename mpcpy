@@ -197,6 +197,15 @@ def flex_str_length(max_length, pre, flex, post):
 	remaining = max_length - used
 	return remaining
 
+def even_pad(str, pad, length):
+	space = length - len(str)
+	extra = '' # keep the length the same
+	if space % 2:
+		space -= 1
+		extra = pad
+
+	return pad * (space / 2) + str + pad * (space / 2) + extra
+
 def statusstr(statusdict):
 	return "[%s%s%s%s%s]" % (
 			'r' if statusdict['repeat' ] > 0 else '-',
@@ -957,11 +966,20 @@ class Mpcpy:
 		while before + after < max_x:
 			after += 1
 
+		before_str = "=" * before
+		after_str = "-" * after
+		time_str = format_time(self.interactive_seek)
+
+		if len(before_str) > len(time_str) + 2:
+			before_str = even_pad(time_str, "=", len(before_str))
+		elif len(after_str) > len(time_str) + 2:
+			after_str = even_pad(time_str, "-", len(after_str))
+
 		self.screen.addstr(
 				"seek: ["
-				+ ("=" * before)
+				+ before_str
 				+ ">"
-				+ ("-" * after)
+				+ after_str
 				+ "] (ESC to cancel)",
 				curses.A_BOLD)
 
