@@ -150,6 +150,12 @@ def intify(map, keys):
 def intify_playlist_entry(entry):
 	return intify(entry, ['Pos', 'Id'])
 
+def re_compile(str):
+	return re.compile(".*\\(" + str + "\\).*", re.IGNORECASE)
+
+def re_pattern(regex):
+	return regex.pattern[4:-4]
+
 def hoststr(host, port):
 	return "%s:%s" % (host, port)
 
@@ -1157,7 +1163,7 @@ class Mpcpy:
 		self.search_str = self.screen.prompt('?' if reverse else '/')
 		if self.search_str is None:
 			return None
-		return re.compile(".*" + self.search_str + ".*", re.IGNORECASE)
+		return re_compile(self.search_str)
 
 	def search(self, type):
 		if type == "forwards" or type == "backwards":
@@ -1201,7 +1207,7 @@ class Mpcpy:
 					self.view_set(track['Pos'], False)
 					self.screen.status("")
 					return
-		self.screen.status("Couldn't find %s" % self.search_regex)
+		self.screen.status("Couldn't find /%s/" % re_pattern(self.search_regex))
 
 	def set_view_mode(self, mode):
 		self.draw_saved[self.view_mode] = Mpcpy.DrawState(self)
