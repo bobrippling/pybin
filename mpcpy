@@ -139,12 +139,13 @@ def list_to_map(lst):
 def try_key(dict, key, default = ''):
 	return dict[key] if key in dict.keys() else default
 
-def intify(map, keys):
+def intify(map, keys, always_set = False):
 	for k in keys:
-		try:
-			map[k] = int(map[k])
-		except (ValueError, KeyError):
-			map[k] = 0
+		if always_set or k in map:
+			try:
+				map[k] = int(map[k])
+			except (ValueError, KeyError):
+				map[k] = 0
 	return map
 
 def intify_playlist_entry(entry):
@@ -449,7 +450,7 @@ class Mpd:
 		if statusdict['time'] != previous_time:
 			self.mpd_track_time = 0
 
-		statusdict = intify(statusdict, ['random', 'repeat', 'consume', 'xfade', 'single', 'volume', 'playlistlength'])
+		statusdict = intify(statusdict, ['random', 'repeat', 'consume', 'xfade', 'single', 'volume', 'playlistlength'], True)
 		self.statusdict = statusdict
 
 	def update_current(self):
