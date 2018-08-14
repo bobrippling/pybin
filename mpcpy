@@ -789,6 +789,9 @@ class Library:
 		self.current_dir = []
 		self.path = []
 
+	def is_empty(self):
+		return len(self.cache) == 0
+
 	def setcwd(self, path):
 		if path == '..':
 			if len(self.path):
@@ -1263,7 +1266,7 @@ class Mpcpy:
 			self.draw_selected = 0
 			self.draw_top = 0
 
-		if mode == VIEW_MODE_LIBRARY:
+		if mode == VIEW_MODE_LIBRARY and self.library.is_empty():
 			self.library.setcwd('')
 
 	def library_confirm(self):
