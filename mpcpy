@@ -128,6 +128,11 @@ KEY_DEFINITIONS = {
 	VIEW_MODE_LIBRARY: {
 		'\n': lambda self: self.library_confirm(),
 		' ': lambda self: self.library_select(),
+
+		'/': lambda self: self.search('forwards'),
+		'?': lambda self: self.search('backwards'),
+		'n': lambda self: self.search('next'),
+		'N': lambda self: self.search('prev'),
 	}
 }
 
@@ -1229,11 +1234,22 @@ class Mpcpy:
 			self.dosearch(order_adj)
 
 	def dosearch(self, reverse):
+		if self.view_mode == VIEW_MODE_PLAYLIST:
+			keys = ['Title', 'Artist', 'Album', 'file']
+			entries = self.mpd.playlist
+		elif self.view_mode == VIEW_MODE_LIBRARY:
+			keys = ['file', 'playlist', 'directory']
+			entries = []
+			for ent, i in zip(self.library.current_dir, range(len(self.library.current_dir))):
+				new = ent.copy()
+				new['Pos'] = i + 1
+				entries.append(new)
+
 		if reverse:
 			positions_to_search = range(self.draw_selected - 1, -1, -1)
-			positions_to_search.extend(i for i in range(len(self.mpd.playlist) - 1, self.draw_selected, -1))
+			positions_to_search.extend(i for i in range(len(entries) - 1, self.draw_selected, -1))
 		else:
-			positions_to_search = range(self.draw_selected + 1, len(self.mpd.playlist)) 
+			positions_to_search = range(self.draw_selected + 1, len(entries)) 
 			positions_to_search.extend(i for i in range(0, self.draw_selected))
 
 		def search_descript(item, items):
@@ -1250,11 +1266,10 @@ class Mpcpy:
 			if self.search_regex is None:
 				return
 
-		keys = ['Title', 'Artist', 'Album', 'file']
-		for track in [self.mpd.playlist[i] for i in positions_to_search]:
+		for entry in [entries[i] for i in positions_to_search]:
 			for key in keys:
-				if key in track and self.search_regex.match(track[key]):
-					self.view_set(track['Pos'], False)
+				if key in entry and self.search_regex.match(entry[key]):
+					self.view_set(entry['Pos'], False)
 					self.screen.status("")
 					return
 		self.screen.status("Couldn't find /%s/" % re_pattern(self.search_regex))
