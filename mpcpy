@@ -159,10 +159,10 @@ def intify_playlist_entry(entry):
 	return intify(entry, ['Pos', 'Id'])
 
 def re_compile(str):
-	return re.compile(".*\\(" + str + "\\).*", re.IGNORECASE)
+	return re.compile(".*(" + str + ").*", re.IGNORECASE)
 
 def re_pattern(regex):
-	return regex.pattern[4:-4]
+	return regex.pattern[3:-3]
 
 def hoststr(host, port):
 	return "%s:%s" % (host, port)
