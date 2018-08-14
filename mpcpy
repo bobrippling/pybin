@@ -22,6 +22,7 @@ SPACE_ALBUM    = 4
 # view modes
 VIEW_MODE_PLAYLIST = 'playlist'
 VIEW_MODE_OUTPUTS = 'outputs'
+VIEW_MODE_LIBRARY = 'library'
 
 debug_plchanges = False
 
@@ -76,6 +77,7 @@ KEY_DEFINITIONS = {
 
 		'1': lambda self: self.set_view_mode(VIEW_MODE_PLAYLIST),
 		'2': lambda self: self.set_view_mode(VIEW_MODE_OUTPUTS),
+		'3': lambda self: self.set_view_mode(VIEW_MODE_LIBRARY),
 
 		'P': lambda self: self.password(),
 		'u': lambda self: self.mpd.update(),
@@ -121,6 +123,10 @@ KEY_DEFINITIONS = {
 
 	VIEW_MODE_OUTPUTS: {
 		'\n': lambda self: self.mpd.output_toggle(self.draw_selected),
+	},
+
+	VIEW_MODE_LIBRARY: {
+		'\n': lambda self: self.library_confirm(),
 	}
 }
 
@@ -183,7 +189,7 @@ def parse_keyval(raw, new_entry_keys = []):
 	return entries
 
 def parse_playlist(raw):
-	return map(intify_playlist_entry, parse_keyval(raw, ['file']))
+	return map(intify_playlist_entry, parse_keyval(raw, ['playlist', 'directory', 'file']))
 
 def format_time(s):
 	n = int(s)
@@ -776,6 +782,35 @@ class Screen:
 					c = '-'
 				self.stdscr.addch(y, x, c, attr)
 
+class Library:
+	def __init__(self, mpd):
+		self.mpd = mpd
+		self.cache = {}
+		self.current_dir = []
+		self.path = []
+
+	def setcwd(self, path):
+		if path == '..':
+			if len(self.path):
+				self.path.pop()
+		elif path == '':
+			del self.path[:]
+		else:
+			self.path = path.split('/')
+
+		self.fetch()
+
+	def fetch(self):
+		path = "/".join(self.path)
+
+		if path in self.cache and len(self.cache[path]):
+			self.current_dir = self.cache[path]
+			return
+
+		ents = self.mpd.lsinfo(path)
+		self.current_dir = ents
+		self.cache[path] = ents
+
 class Mpcpy:
 	class DrawState:
 		def __init__(self, mpcpy):
@@ -804,6 +839,7 @@ class Mpcpy:
 		self.selection = {}
 		self.view_mode = VIEW_MODE_PLAYLIST
 		self.interactive_seek = None
+		self.library = Library(mpd)
 
 	def lastmark(self):
 		self.mark_add(ord("'"), self.draw_selected)
@@ -822,6 +858,8 @@ class Mpcpy:
 			return len(self.mpd.playlist)
 		if self.view_mode == VIEW_MODE_OUTPUTS:
 			return len(self.mpd.outputs)
+		if self.view_mode == VIEW_MODE_LIBRARY:
+			return len(self.library.current_dir) + 1 # +1 for ".."
 		return 0
 
 	def view_set(self, n, marklast = True):
@@ -1225,6 +1263,26 @@ class Mpcpy:
 			self.draw_selected = 0
 			self.draw_top = 0
 
+		if mode == VIEW_MODE_LIBRARY:
+			self.library.setcwd('')
+
+	def library_confirm(self):
+		to = self.draw_selected
+		self.draw_selected = 1
+		self.draw_top = 0
+
+		if to == 0:
+			self.library.setcwd('..')
+			return
+
+		ent = self.library.current_dir[to - 1]
+		if 'directory' in ent:
+			self.library.setcwd(ent['directory'])
+		elif 'file' in ent:
+			self.screen.status('selected file %s' % ent['file']) # TODO
+		elif 'playlist' in ent:
+			self.screen.status('selected playlist %s' % ent['playlist']) # TODO
+
 	def view_current(self):
 		self.lastmark()
 		curidx = try_key(self.mpd.current, 'Pos', -1)
@@ -1251,6 +1309,8 @@ class Mpcpy:
 			self.draw_line_playlist(i, max_x)
 		elif self.view_mode == VIEW_MODE_OUTPUTS:
 			self.draw_line_output(i, max_x)
+		elif self.view_mode == VIEW_MODE_LIBRARY:
+			self.draw_line_library(i, max_x)
 
 	def draw_line_output(self, i, max_x):
 		if i >= len(self.mpd.outputs):
@@ -1322,6 +1382,35 @@ class Mpcpy:
 		self.screen.clrtoeol()
 		try:
 			self.screen.addstr(final, attr)
+		except curses.error:
+			pass
+
+	def draw_line_library(self, i, max_x):
+		if i >= len(self.library.current_dir) + 1:
+			self.screen.addstr("~")
+			self.screen.clrtoeol()
+			return
+
+		if i == 0:
+			fname = '..'
+		else:
+			ent = self.library.current_dir[i - 1]
+			if 'directory' in ent:
+				fname = ent['directory'] + '/'
+			elif 'file' in ent:
+				fname = ent['file']
+			elif 'playlist' in ent:
+				fname = 'playlist: ' + ent['playlist']
+			else:
+				fname = '<unknown entry: ' + ','.join(ent.keys()) + '>'
+
+		attr = 0
+		if self.draw_selected == i:
+			attr = curses.A_BOLD | curses.color_pair(curses.COLOR_GREEN)
+
+		self.screen.clrtoeol()
+		try:
+			self.screen.addstr(fname, attr)
 		except curses.error:
 			pass
 
