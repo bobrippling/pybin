@@ -536,6 +536,8 @@ class Mpd:
 
 	def toggle(self): self.stop() if self.statusdict['state'] == 'play' else self.play()
 	def remove(self, n): self.cmd_noreply("delete %d" % n)
+	def add(self, path):
+		self.cmd_noreply("add \"%s\"" % path)
 
 	def random(self):  self.cmd_noreply("random %d"  % (1 - self.statusdict['random']))
 	def repeat(self):  self.cmd_noreply("repeat %d"  % (1 - self.statusdict['repeat']))
@@ -1282,9 +1284,16 @@ class Mpcpy:
 		if 'directory' in ent:
 			self.library.setcwd(ent['directory'])
 		elif 'file' in ent:
-			self.screen.status('selected file %s' % ent['file']) # TODO
+			path = ent['file']
+			self.mpd.add(path)
+			self.mpd.play(len(self.mpd.playlist))
+			self.screen.status("added and playing \"%s\"" % path)
 		elif 'playlist' in ent:
-			self.screen.status('selected playlist %s' % ent['playlist']) # TODO
+			playlist = ent['playlist']
+			self.mpd.playlist_clear()
+			self.mpd.playlist_append_track(playlist)
+			self.mpd.play(0)
+			self.screen.status('playing playlist "%s"' % playlist)
 
 	def view_current(self):
 		self.lastmark()
