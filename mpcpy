@@ -583,8 +583,11 @@ class Mpd:
 			return
 		self.cmd_noreply("setvol %d" % v)
 
+	def lsinfo_raw(self, path):
+		return self.cmd('lsinfo "%s"' % path)
+
 	def get_playlists(self):
-		return map(lambda line: line[10:], filter(lambda line: line[:10] == 'playlist: ', self.cmd('lsinfo')))
+		return map(lambda line: line[10:], filter(lambda line: line[:10] == 'playlist: ', self.lsinfo_raw()))
 
 	def playlist_append_track(self, name):
 		self.cmd_noreply('load "%s"' % name)
