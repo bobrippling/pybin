@@ -127,6 +127,7 @@ KEY_DEFINITIONS = {
 
 	VIEW_MODE_LIBRARY: {
 		'\n': lambda self: self.library_confirm(),
+		' ': lambda self: self.library_select(),
 	}
 }
 
@@ -1294,6 +1295,23 @@ class Mpcpy:
 			self.mpd.playlist_append_track(playlist)
 			self.mpd.play(0)
 			self.screen.status('playing playlist "%s"' % playlist)
+
+	def library_select(self):
+		if self.draw_selected == 0:
+			self.screen.status('can\'t select ".."')
+			return
+
+		ent = self.library.current_dir[self.draw_selected - 1]
+		if 'directory' in ent:
+			self.screen.status('can\'t select a directory')
+		elif 'file' in ent:
+			path = ent['file']
+			self.mpd.add(path)
+			self.screen.status("added \"%s\"" % path)
+		elif 'playlist' in ent:
+			playlist = ent['playlist']
+			self.mpd.playlist_append_track(playlist)
+			self.screen.status('appended playlist "%s"' % playlist)
 
 	def view_current(self):
 		self.lastmark()
