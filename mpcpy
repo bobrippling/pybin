@@ -1440,16 +1440,15 @@ class Mpcpy:
 		x += 1
 		i = 1
 		for a in attr:
-			try:
-				val = current[a]
-				if a == 'Time':
-					val = format_time(val)
+			val = try_key(current, a)
+			if not val:
+				continue
+			if a == 'Time':
+				val = format_time(val)
 
-				s = a + ': ' + val
-				self.screen.addstr(y + i, x, s[:w - 4])
-				i += 1
-			except:
-				pass
+			s = "%s: %s" % (a, val)
+			self.screen.addstr(y + i, x, s[:w - 4])
+			i += 1
 
 		self.screen.addstr(y + len(attr) + 1, x, 'Any key to continue...')
 		self.screen.getchar(0)
