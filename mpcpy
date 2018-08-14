@@ -1265,7 +1265,7 @@ class Mpcpy:
 			attr = curses.color_pair(curses.COLOR_BLUE)
 
 		self.screen.clrtoeol()
-		self.screen.addstr("Output {0}: {1}{2}\n".format(id, name, " (disabled)" if not enabled else ""), attr)
+		self.screen.addstr("Output {0}: {1}{2}".format(id, name, " (disabled)" if not enabled else ""), attr)
 
 	def draw_line_playlist(self, i, max_x):
 		if i >= len(self.mpd.playlist):
