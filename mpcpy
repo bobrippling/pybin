@@ -1288,12 +1288,14 @@ class Mpcpy:
 			path = ent['file']
 			self.mpd.add(path)
 			self.mpd.play(len(self.mpd.playlist))
+			self.view_set(self.draw_selected + 1)
 			self.screen.status("added and playing \"%s\"" % path)
 		elif 'playlist' in ent:
 			playlist = ent['playlist']
 			self.mpd.playlist_clear()
 			self.mpd.playlist_append_track(playlist)
 			self.mpd.play(0)
+			self.view_set(self.draw_selected + 1)
 			self.screen.status('playing playlist "%s"' % playlist)
 
 	def library_select(self):
@@ -1307,10 +1309,12 @@ class Mpcpy:
 		elif 'file' in ent:
 			path = ent['file']
 			self.mpd.add(path)
+			self.view_set(self.draw_selected + 1)
 			self.screen.status("added \"%s\"" % path)
 		elif 'playlist' in ent:
 			playlist = ent['playlist']
 			self.mpd.playlist_append_track(playlist)
+			self.view_set(self.draw_selected + 1)
 			self.screen.status('appended playlist "%s"' % playlist)
 
 	def view_current(self):
