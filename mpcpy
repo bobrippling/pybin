@@ -160,7 +160,7 @@ def re_pattern(regex):
 def hoststr(host, port):
 	return "%s:%s" % (host, port)
 
-def parse_keyval(raw):
+def parse_keyval(raw, new_entry_keys = []):
 	entries = []
 	curmap = {}
 	for line in raw:
@@ -171,7 +171,7 @@ def parse_keyval(raw):
 		key = line[:colon]
 		val = line[colon+2:]
 
-		if key in curmap:
+		if key in curmap or (len(curmap) and key in new_entry_keys):
 			entries.append(curmap)
 			curmap = {}
 
@@ -183,7 +183,7 @@ def parse_keyval(raw):
 	return entries
 
 def parse_playlist(raw):
-	return map(intify_playlist_entry, parse_keyval(raw))
+	return map(intify_playlist_entry, parse_keyval(raw, ['file']))
 
 def format_time(s):
 	n = int(s)
