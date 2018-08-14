@@ -586,6 +586,9 @@ class Mpd:
 	def lsinfo_raw(self, path):
 		return self.cmd('lsinfo "%s"' % path)
 
+	def lsinfo(self, path = ''):
+		return parse_playlist(self.lsinfo_raw(path))
+
 	def get_playlists(self):
 		return map(lambda line: line[10:], filter(lambda line: line[:10] == 'playlist: ', self.lsinfo_raw()))
 
