@@ -840,7 +840,6 @@ class Mpcpy:
 		self.mpd_track_pos = -1
 		self.search_rev = 1
 		self.search_regex = None
-		self.search_str = ''
 		self.normal_input = ''
 		self.selection = {}
 		self.view_mode = VIEW_MODE_PLAYLIST
@@ -1211,10 +1210,10 @@ class Mpcpy:
 		self.clip_draw_selected()
 
 	def prompt_search(self, reverse):
-		self.search_str = self.screen.prompt('?' if reverse else '/')
-		if self.search_str is None:
+		search_str = self.screen.prompt('?' if reverse else '/')
+		if search_str is None:
 			return None
-		return re_compile(self.search_str)
+		return re_compile(search_str)
 
 	def search(self, type):
 		if type == "forwards" or type == "backwards":
