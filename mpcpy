@@ -944,7 +944,7 @@ class Mpcpy:
 			events = self.try_catch_mpd(lambda: self.mpd.handle_input())
 			if events:
 				if 'playlist' in events:
-					self.clip_draw_selected()
+					self.clip_draw_selected(True)
 				if 'update' in events:
 					self.screen.status("mpd update complete")
 
@@ -1085,11 +1085,20 @@ class Mpcpy:
 			self.draw_selected = self.draw_top + maxy - scroll_off - 2 # 2 for the status bars
 		else:
 			self.draw_selected = self.draw_top + maxy / 2 - 1 # for status bar
-		self.clip_draw_selected()
+		self.clip_draw_selected(False)
 
-	def clip_draw_selected(self):
-		if self.draw_selected >= len(self.mpd.playlist):
-			self.draw_selected = len(self.mpd.playlist) - 1
+	def clip_draw_selected(self, playlist_only):
+		if self.view_mode == VIEW_MODE_PLAYLIST:
+			ents = self.mpd.playlist
+		elif playlist_only:
+			return
+		elif self.view_mode == VIEW_MODE_OUTPUTS:
+			ents = self.mpd.outputs
+		elif self.view_mode == VIEW_MODE_LIBRARY:
+			ents = self.library.current_dir
+
+		if self.draw_selected >= len(ents):
+			self.draw_selected = len(ents) - 1
 		if self.draw_selected < 0:
 			self.draw_selected = 0
 
@@ -1212,7 +1221,7 @@ class Mpcpy:
 		else:
 			self.selection[id] = True
 		self.draw_selected += 1
-		self.clip_draw_selected()
+		self.clip_draw_selected(True)
 
 	def prompt_search(self, reverse):
 		search_str = self.screen.prompt('?' if reverse else '/')
