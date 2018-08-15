@@ -794,13 +794,18 @@ class Library:
 	def __init__(self, mpd):
 		self.mpd = mpd
 		self.cache = {}
+		self.idx_cache = {}
 		self.current_dir = []
 		self.path = []
+		self.idx = 1
 
 	def is_empty(self):
 		return len(self.cache) == 0
 
-	def setcwd(self, path):
+	def setcwd(self, path, save_idx):
+		saved = "/".join(self.path)
+		self.idx_cache[saved] = save_idx
+
 		if path == '..':
 			if len(self.path):
 				self.path.pop()
@@ -809,18 +814,19 @@ class Library:
 		else:
 			self.path = path.split('/')
 
-		self.fetch()
+		target = "/".join(self.path)
 
-	def fetch(self):
-		path = "/".join(self.path)
+		if target in self.idx_cache:
+			self.idx = self.idx_cache[target]
+		else:
+			self.idx = 1
 
-		if path in self.cache and len(self.cache[path]):
-			self.current_dir = self.cache[path]
+		if target in self.cache and len(self.cache[target]):
+			self.current_dir = self.cache[target]
 			return
-
-		ents = self.mpd.lsinfo(path)
+		ents = self.mpd.lsinfo(target)
 		self.current_dir = ents
-		self.cache[path] = ents
+		self.cache[target] = ents
 
 class Mpcpy:
 	class DrawState:
@@ -1293,12 +1299,10 @@ class Mpcpy:
 			self.draw_top = 0
 
 		if mode == VIEW_MODE_LIBRARY and self.library.is_empty():
-			self.library.setcwd('')
+			self.library.setcwd('', 1)
 
 	def library_confirm(self):
 		to = self.draw_selected
-		self.draw_selected = 1
-		self.draw_top = 0
 
 		if to == 0:
 			self.library.setcwd('..')
@@ -1306,7 +1310,8 @@ class Mpcpy:
 
 		ent = self.library.current_dir[to - 1]
 		if 'directory' in ent:
-			self.library.setcwd(ent['directory'])
+			self.library.setcwd(ent['directory'], self.draw_selected)
+			self.view_set(self.library.idx)
 		elif 'file' in ent:
 			path = ent['file']
 			self.mpd.add(path)
