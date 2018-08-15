@@ -1605,8 +1605,8 @@ class Mpcpy:
 		x += 1
 		i = 1
 		for a in attr:
-			val = try_key(current, a)
-			if not val:
+			val = try_key(current, a, None)
+			if val is None:
 				continue
 			if a == 'Time':
 				val = format_time(val)
