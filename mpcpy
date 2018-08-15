@@ -128,6 +128,9 @@ KEY_DEFINITIONS = {
 	VIEW_MODE_LIBRARY: {
 		'\n': lambda self: self.library_confirm(),
 		' ': lambda self: self.library_select(),
+		ctrl_and('h'): lambda self: self.library_cdup(),
+		ctrl_and('?'): lambda self: self.library_cdup(),
+		chr(127): lambda self: self.library_cdup(),
 
 		'/': lambda self: self.search('forwards'),
 		'?': lambda self: self.search('backwards'),
@@ -1301,11 +1304,15 @@ class Mpcpy:
 		if mode == VIEW_MODE_LIBRARY and self.library.is_empty():
 			self.library.setcwd('', 1)
 
+	def library_cdup(self):
+		self.library.setcwd('..', self.draw_selected)
+		self.view_set(self.library.idx)
+
 	def library_confirm(self):
 		to = self.draw_selected
 
 		if to == 0:
-			self.library.setcwd('..')
+			self.library_cdup()
 			return
 
 		ent = self.library.current_dir[to - 1]
