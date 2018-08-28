@@ -1577,11 +1577,11 @@ class Mpcpy:
 		if len(self.selection) > 0:
 			ids = self.selection.keys()
 			to_remove = filter(lambda entry: entry['Id'] in ids, self.mpd.playlist)
-			for track in sorted(to_remove, lambda a, b: b['Pos'] - a['Pos']):
-				self.mpd.remove(track['Pos'])
 		else:
-			pos = self.mpd.playlist[self.draw_selected]['Pos']
-			self.mpd.remove(pos)
+			to_remove = [self.mpd.playlist[self.draw_selected]]
+
+		for track in sorted(to_remove, lambda a, b: b['Pos'] - a['Pos']):
+			self.mpd.remove(track['Pos'])
 
 	def password(self):
 		pw = self.screen.prompt('password: ', pw=True)
