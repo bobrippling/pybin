@@ -600,7 +600,7 @@ class Mpd:
 			return
 		self.cmd_noreply("setvol %d" % v)
 
-	def lsinfo_raw(self, path):
+	def lsinfo_raw(self, path = ''):
 		return self.cmd('lsinfo "%s"' % path)
 
 	def lsinfo(self, path = ''):
