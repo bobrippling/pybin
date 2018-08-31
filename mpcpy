@@ -1146,7 +1146,12 @@ class Mpcpy:
 		try:
 			as_char = chr(ch)
 		except ValueError:
-			return
+			if ch == 263:
+				# backspace
+				as_char = ctrl_and('h')
+				ch = ord(as_char)
+			else:
+				return
 
 		self.normal_input += as_char
 		possible = []
