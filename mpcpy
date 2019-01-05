@@ -1273,7 +1273,7 @@ class Mpcpy:
 			positions_to_search = range(self.draw_selected - 1, -1, -1)
 			positions_to_search.extend(i for i in range(len(entries) - 1, self.draw_selected, -1))
 		else:
-			positions_to_search = range(self.draw_selected + 1, len(entries)) 
+			positions_to_search = range(self.draw_selected + 1, len(entries))
 			positions_to_search.extend(i for i in range(0, self.draw_selected))
 
 		def search_descript(item, items):
