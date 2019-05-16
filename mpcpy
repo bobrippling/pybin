@@ -518,7 +518,9 @@ class Mpd:
 				print >>sys.stderr, "  .id={0} .pos={1} .file={2}".format(track['Id'], track['Pos'], track['file'])
 
 	def update_outputs(self):
-		self.outputs = parse_keyval(self.cmd('outputs'))
+		self.outputs = filter(
+				lambda o: 'outputid' in o,
+				parse_keyval(self.cmd('outputs')))
 
 	def output_toggle(self, i):
 		output = self.outputs[i]
