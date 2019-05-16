@@ -1423,9 +1423,9 @@ class Mpcpy:
 				attr = curses.A_BOLD | curses.color_pair(curses.COLOR_YELLOW)
 			else:
 				attr = curses.A_BOLD | curses.color_pair(curses.COLOR_GREEN)
-		elif entry['Pos'] == self.mpd.current_pos():
+		elif 'Pos' in entry and entry['Pos'] == self.mpd.current_pos():
 			attr = curses.A_BOLD | curses.color_pair(curses.COLOR_RED)
-		elif entry['Id'] in self.selection:
+		elif 'Id' in entry and entry['Id'] in self.selection:
 			attr = curses.color_pair(curses.COLOR_BLUE)
 		else:
 			attr = curses.A_NORMAL
