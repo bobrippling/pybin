@@ -132,6 +132,7 @@ KEY_DEFINITIONS = {
 		ctrl_and('h'): lambda self: self.library_cdup(),
 		ctrl_and('?'): lambda self: self.library_cdup(),
 		chr(127): lambda self: self.library_cdup(),
+		'r': lambda self: self.library_refresh(),
 
 		'/': lambda self: self.search('forwards'),
 		'?': lambda self: self.search('backwards'),
@@ -836,6 +837,9 @@ class Library:
 		self.current_dir = ents
 		self.cache[target] = ents
 
+	def clear(self, path):
+		del self.cache[path]
+
 class Mpcpy:
 	class DrawState:
 		def __init__(self, mpcpy):
@@ -1317,6 +1321,11 @@ class Mpcpy:
 	def library_cdup(self):
 		self.library.setcwd('..', self.draw_selected)
 		self.view_set(self.library.idx)
+
+	def library_refresh(self):
+	    dir = self.library.cwd()
+	    self.library.clear(dir)
+	    self.library.setcwd(dir, False)
 
 	def library_confirm(self):
 		to = self.draw_selected
