@@ -798,11 +798,11 @@ class Screen:
 class Library:
 	def __init__(self, mpd):
 		self.mpd = mpd
-		self.cache = {}
-		self.idx_cache = {}
-		self.current_dir = []
-		self.path = []
-		self.idx = 1
+		self.cache = {} # ["path/to/dir"] -> [entries...]
+		self.idx_cache = {} # ["path/to/dir"] -> list index
+		self.current_dir = [] # list of entries found at self.path
+		self.path = [] # ['path', 'to', 'dir'] -> currently in path/to/dir
+		self.idx = 1 # current list index
 
 	def is_empty(self):
 		return len(self.cache) == 0
