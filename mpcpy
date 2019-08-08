@@ -807,8 +807,11 @@ class Library:
 	def is_empty(self):
 		return len(self.cache) == 0
 
+	def cwd(self):
+	    return "/".join(self.path)
+
 	def setcwd(self, path, save_idx):
-		saved = "/".join(self.path)
+		saved = self.cwd()
 		self.idx_cache[saved] = save_idx
 
 		if path == '..':
@@ -819,7 +822,7 @@ class Library:
 		else:
 			self.path = path.split('/')
 
-		target = "/".join(self.path)
+		target = self.cwd()
 
 		if target in self.idx_cache:
 			self.idx = self.idx_cache[target]
