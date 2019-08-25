@@ -548,7 +548,7 @@ class Mpd:
 
 	def toggle(self):
             if self.statusdict['state'] == 'play':
-                self.stop()
+                self.pause()
             else:
                 self.play()
 
