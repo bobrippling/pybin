@@ -546,7 +546,12 @@ class Mpd:
 		if idx >= 0:
 			self.cmd_noreply("seek {0} {1}".format(idx, pos))
 
-	def toggle(self): self.stop() if self.statusdict['state'] == 'play' else self.play()
+	def toggle(self):
+            if self.statusdict['state'] == 'play':
+                self.stop()
+            else:
+                self.play()
+
 	def remove(self, n): self.cmd_noreply("delete %d" % n)
 	def add(self, path):
 		self.cmd_noreply("add \"%s\"" % path)
