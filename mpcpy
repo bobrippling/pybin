@@ -337,6 +337,7 @@ class Mpd:
 		self.outputs = []
 		self.current = {}
 		self.statusdict = {}
+		self.last_statusdict_get = None # updated below
 		self.xfade = 5
 		self.waiting_on_cmd = ''
 		self.is_idle = False
@@ -464,8 +465,7 @@ class Mpd:
 
 		previous_time = try_key(statusdict, 'time', '00:00')
 		default_set(statusdict, 'time', '00:00')
-		if statusdict['time'] != previous_time:
-			self.mpd_track_time = 0
+		self.last_statusdict_get = time.time()
 
 		statusdict = intify(statusdict, ['random', 'repeat', 'consume', 'xfade', 'single', 'volume', 'playlistlength'], True)
 		self.statusdict = statusdict
@@ -858,11 +858,8 @@ class Mpcpy:
 		self.mpd = mpd
 		self.screen = screen
 		self.marks = {}
-		self.mpd_track_time_last_check = 0
-		self.mpd_track_time = 0
 		self.select_delay = 0
 		self.should_exit = False
-		self.mpd_track_pos = -1
 		self.search_rev = 1
 		self.search_regex = None
 		self.normal_input = ''
@@ -973,27 +970,9 @@ class Mpcpy:
 			if self.should_exit:
 				return False
 
-		# may have timed out, check mpd time
-		self.update_time()
-
-		return True
-
-	def update_time(self):
 		self.draw_status()
 
-		now = time.time()
-		diff = now - self.mpd_track_time_last_check
-		if diff > 1:
-			self.mpd_track_time_last_check = now
-			statusdict = self.mpd.statusdict
-			if 'state' in statusdict.keys():
-				if statusdict['state'] == 'play':
-					self.mpd_track_time += diff
-					if self.mpd.current_pos() != self.mpd_track_pos:
-						self.mpd_track_pos = self.mpd.current_pos()
-						self.mpd_track_time = 0
-				elif statusdict['state'] == 'stop':
-					self.mpd_track_time = 0
+		return True
 
 	def draw_status(self):
 		self.select_delay = 1
@@ -1071,8 +1050,14 @@ class Mpcpy:
 			play_time = '00:00'
 
 		times = play_time.split(':')
-		time_now = int(times[0]) + self.mpd_track_time
+		time_now = int(times[0])
 		time_fin = int(times[1])
+
+                if self.mpd.statusdict["state"] == "play":
+                    now = time.time()
+                    time_now += now - self.mpd.last_statusdict_get
+                    # otherwise, we're in a paused or stopped state, and
+                    # the last status dict will be up-to-date
 
 		return time_now, time_fin
 
