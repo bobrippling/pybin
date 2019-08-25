@@ -458,7 +458,6 @@ class Mpd:
 	def update_statusdict(self):
 		statusdict = list_to_map(self.cmd("status"))
 
-		default_set(statusdict, 'status', 'stop')
 		default_set(statusdict, 'playlist', -1)
 		default_set(statusdict, 'playlistlength', -1)
 		default_set(statusdict, 'state', 'stop')
