@@ -1157,7 +1157,7 @@ class Mpcpy:
 				possible.append(cmd)
 
 		if len(possible) == 0:
-			self.screen.status("unknown key %d" % ch)
+			self.screen.status("unknown command %s" % self.normal_input)
 			self.normal_input = ''
 		elif len(possible) == 1:
 			self.handle_key(key_defs[possible[0]])
