@@ -759,8 +759,9 @@ class Screen:
 				ret += as_char
 
 		self.stdscr.timeout(CURSES_TIMEOUT)
-		if allow_empty and len(ret) == 0:
-			return ret;
+		if ret and len(ret) == 0:
+			if allow_empty:
+				return ret;
 		return ret or None
 
 	def confirm(self, prompt):
