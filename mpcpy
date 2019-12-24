@@ -96,7 +96,8 @@ KEY_DEFINITIONS = {
 
 		'm': lambda self: self.create_mark(),
 
-		'i': lambda self: self.info(self.mpd.playlist[self.draw_selected]),
+		'i': lambda self: self.info(self.mpd.playlist[self.draw_selected]) \
+                        if self.draw_selected >= 0 else None,
 
 		'd':  lambda self: self.playlist_remove_current(),
 		'\n': lambda self: self.confirm(),
@@ -857,7 +858,7 @@ class Mpcpy:
 			mpcpy.draw_top = self.top
 
 	def __init__(self, mpd, screen):
-		self.draw_selected = 0
+		self.draw_selected = -1
 		self.draw_saved = {}
 		self.draw_top = 0
 		self.mpd = mpd
@@ -874,6 +875,8 @@ class Mpcpy:
 		self.library = Library(mpd)
 
 	def lastmark(self):
+		if self.draw_selected < 0:
+			return
 		self.mark_add(ord("'"), self.draw_selected)
 
 	def mark_add(self, ch, pos):
@@ -902,7 +905,7 @@ class Mpcpy:
 
 		if n < 0:
 			n = 0
-		elif n >= self.view_max():
+		if n >= self.view_max():
 			n = self.view_max() - 1
 
 		self.draw_selected = n
@@ -1076,6 +1079,10 @@ class Mpcpy:
 
 	def create_mark(self):
 		ch = self.screen.getchar(0)
+
+		if self.draw_selected < 0:
+		    return
+
 		self.mark_add(ch, self.draw_selected)
 
 		s = '%d' % self.draw_selected
@@ -1086,6 +1093,9 @@ class Mpcpy:
 		self.screen.status("marked: %c => %s" % (ch, s))
 
 	def screen_position(self, where):
+		if self.draw_selected < 0:
+		    return
+
 		self.lastmark()
 		maxy = self.screen.get_max_y()
 		scroll_off = self.screen.calc_scrolloff(SCROLL_OFF)
@@ -1107,10 +1117,10 @@ class Mpcpy:
 		elif self.view_mode == VIEW_MODE_LIBRARY:
 			ents = self.library.current_dir
 
-		if self.draw_selected >= len(ents):
-			self.draw_selected = len(ents) - 1
 		if self.draw_selected < 0:
 			self.draw_selected = 0
+		if self.draw_selected >= len(ents):
+			self.draw_selected = len(ents) - 1
 
 	def playlist_save(self):
 		name = self.screen.prompt('save playlist as: ')
@@ -1210,11 +1220,13 @@ class Mpcpy:
 	def shift_tracks(self, dir):
 		# shift song up or down one
 		up = dir == 'up'
-		have_selected = len(self.selection) > 0
+		have_selected = len(self.selection) > 0 \
+			and len(self.mpd.playlist) > 0
 
 		if have_selected:
-			ids = self.selection.keys()
-			to_move = filter(lambda entry: entry['Id'] in ids, self.mpd.playlist)
+			to_move = filter(
+				lambda entry: entry['Id'] in self.selection,
+				self.mpd.playlist)
 
 			if not up:
 				to_move.reverse()
@@ -1223,12 +1235,17 @@ class Mpcpy:
 				if not self.move_track(entry['Pos'], up):
 					break
 		else:
+			if self.draw_selected < 0:
+				self.draw_selected = 0
 			if self.move_track(self.draw_selected, up):
 				self.view_set(self.draw_selected + (-1 if up else 1), False)
 			else:
 				self.screen.status("can't move from there")
 
 	def toggle_selection(self):
+		if self.draw_selected < 0:
+			self.draw_selected = 0
+
 		track = self.mpd.playlist[self.draw_selected]
 		id = track['Id']
 		if id in self.selection:
@@ -1305,6 +1322,7 @@ class Mpcpy:
 			self.draw_saved[self.view_mode].restore(self)
 		else:
 			self.draw_selected = 0
+			self.clip_draw_selected(True)
 			self.draw_top = 0
 
 		if mode == VIEW_MODE_LIBRARY and self.library.is_empty():
@@ -1563,6 +1581,8 @@ class Mpcpy:
 		if self.interactive_seek is not None:
 			self.seek_confirm()
 		else:
+			if self.draw_selected < 0:
+				return
 			self.mpd.play(self.draw_selected)
 
 	def escape(self):
@@ -1585,10 +1605,13 @@ class Mpcpy:
 		self.mpd.playlist_clear()
 
 	def playlist_crop(self):
-		if len(self.selection) > 0:
-			ids = self.selection.keys()
-			to_keep = filter(lambda entry: entry['Id'] in ids, self.mpd.playlist)
+		if len(self.selection) > 0 and len(self.mpd.playlist) > 0:
+			to_keep = filter(
+				lambda entry: entry['Id'] in self.selection,
+				self.mpd.playlist)
 		else:
+			if self.draw_selected < 0:
+				return
 			to_keep = [self.mpd.playlist[self.draw_selected]]
 
 		to_keep_lookup = {}
@@ -1603,10 +1626,13 @@ class Mpcpy:
 				self.mpd.remove(pos)
 
 	def playlist_remove_current(self):
-		if len(self.selection) > 0:
-			ids = self.selection.keys()
-			to_remove = filter(lambda entry: entry['Id'] in ids, self.mpd.playlist)
+		if len(self.selection) > 0 and len(self.mpd.playlist) > 0:
+			to_remove = filter(
+				lambda entry: entry['Id'] in self.selection,
+				self.mpd.playlist)
 		else:
+			if self.draw_selected < 0:
+				return
 			to_remove = [self.mpd.playlist[self.draw_selected]]
 
 		for track in sorted(to_remove, lambda a, b: b['Pos'] - a['Pos']):
