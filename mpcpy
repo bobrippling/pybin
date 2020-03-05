@@ -92,7 +92,7 @@ KEY_DEFINITIONS = {
 	},
 
 	VIEW_MODE_PLAYLIST: {
-		'"': lambda self: self.goto_mark(),
+		"'": lambda self: self.goto_mark(),
 
 		'm': lambda self: self.create_mark(),
 
@@ -1071,7 +1071,7 @@ class Mpcpy:
 
 	def goto_mark(self):
 		ch = self.screen.getchar(0)
-		pos = mark_get(ch)
+		pos = self.mark_get(ch)
 		if pos == -1:
 			self.screen.status("unset mark")
 		else:
