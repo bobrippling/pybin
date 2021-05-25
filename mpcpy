@@ -319,7 +319,9 @@ def create_mpd(screen):
 		raise MPDException("Invalid version string from mpd: %s" % version_data[2])
 
 	try:
-		valid_version = int(vers[0]) == 0 and (16 <= int(vers[1]) and int(vers[1]) <= 21)
+		valid_version = int(vers[0]) == 0 and (
+			16 <= int(vers[1]) and int(vers[1]) <= 22
+		)
 
 		if not valid_version and not screen.confirm("MPD (%s) version: %s, continue? (Y/n) " % (hoststr(host, port), version_data[2])):
 			raise MPDException("Invalid MPD version: %s" % version_data[2])
