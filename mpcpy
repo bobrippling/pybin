@@ -1166,20 +1166,34 @@ class Mpcpy:
 				return
 
 		self.normal_input += as_char
-		possible = []
 
-		key_defs = dict(KEY_DEFINITIONS[''].items() + KEY_DEFINITIONS[self.view_mode].items())
+		def find_key(d):
+			possible = []
 
-		for cmd in key_defs:
-			if self.normal_input == cmd[:len(self.normal_input)]:
-				possible.append(cmd)
+			for (keys, cmd) in d.items():
+				if self.normal_input == keys[:len(self.normal_input)]:
+					possible.append((keys, cmd))
 
-		if len(possible) == 0:
+			return possible
+
+		candidates_fallback = find_key(KEY_DEFINITIONS[''])
+		candidates_mode = find_key(KEY_DEFINITIONS[self.view_mode])
+
+		if len(candidates_mode) + len(candidates_fallback) == 0:
 			self.screen.status("unknown command %s" % self.normal_input)
 			self.normal_input = ''
-		elif len(possible) == 1:
-			self.handle_key(key_defs[possible[0]])
+			return
+
+		def maybe_dispatch(candidates):
+			if len(candidates) != 1:
+				return False
+
+			fn = candidates[0][1]
+			self.handle_key(fn)
 			self.normal_input = ''
+			return True
+
+		maybe_dispatch(candidates_mode) or maybe_dispatch(candidates_fallback)
 
 	def queue(self):
 		go = False
