@@ -133,7 +133,7 @@ KEY_DEFINITIONS = {
 		ctrl_and('h'): lambda self: self.library_cdup(),
 		ctrl_and('?'): lambda self: self.library_cdup(),
 		chr(127): lambda self: self.library_cdup(),
-		'r': lambda self: self.library_refresh(),
+		'u': lambda self: self.library_refresh(),
 
 		'/': lambda self: self.search('forwards'),
 		'?': lambda self: self.search('backwards'),
