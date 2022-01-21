@@ -328,14 +328,15 @@ def create_mpd(screen):
 	except TypeError as e:
 		raise MPDException("Invalid version string from mpd: %s" % version_data[2])
 
-	return Mpd(host, port, pw, bufsock)
+	return Mpd(host, port, pw, bufsock, vers)
 
 
 class Mpd:
-	def __init__(self, host, port, pw, bufsock):
+	def __init__(self, host, port, pw, bufsock, version):
 		self.host = host
 		self.port = port
 		self.bufsock = bufsock
+		self.mpd_version = version
 		self.playlist = []
 		self.outputs = []
 		self.current = {}
