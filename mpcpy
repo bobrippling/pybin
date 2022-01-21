@@ -453,7 +453,13 @@ class Mpd:
 					self.update_statusdict()
 					self.update_current()
 				elif l == 'update':
-					events.append('update')
+					was_updating = 'updating_db' in self.statusdict
+					# re-request status
+					self.update_statusdict()
+					now_updating = 'updating_db' in self.statusdict
+
+					if was_updating and not now_updating:
+						events.append('update')
 				elif l == 'output':
 					self.update_outputs()
 
@@ -584,17 +590,20 @@ class Mpd:
 		self.idle(False)
 
 	def update(self):
-		ret = self.cmd_noreply('update')
-		try:
-			if len(ret) != 1:
-				raise
-			parts = ret[0].split(' ')
-			if len(parts) == 2 and parts[0] == 'updating_db:':
-				int(parts[1])
-			else:
-				raise
-		except:
-			raise MPDException("Invalid MPD update reply: %s" % ret)
+		if self.mpd_version[1] < 19: # just a guess
+			self.cmd_noreply('update')
+		else:
+			ret = self.cmd('update')
+			try:
+				if len(ret) != 1:
+					raise
+				parts = ret[0].split(' ')
+				if len(parts) == 2 and parts[0] == 'updating_db:':
+					return int(parts[1])
+				else:
+					raise
+			except:
+				raise MPDException("Invalid MPD update reply: %s" % ret)
 
 	def crossfade(self, n = -1):
 		if n == -1:
