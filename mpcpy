@@ -460,6 +460,8 @@ class Mpd:
 
 					if was_updating and not now_updating:
 						events.append('update')
+					elif now_updating:
+						events.append('updating')
 				elif l == 'output':
 					self.update_outputs()
 
@@ -984,6 +986,8 @@ class Mpcpy:
 					self.clip_draw_selected(True)
 				if 'update' in events:
 					self.screen.status("mpd update complete")
+				elif 'updating' in events:
+					self.screen.status("mpd updating...")
 
 		if sys.stdin in ready[0]:
 			self.handle_keys()
